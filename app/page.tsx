@@ -9,7 +9,7 @@ import { Insights } from "@/components/insights";
 import { SettingsPanel } from "@/components/settings-panel";
 import { DeepSeekConnectionDialog, type DeepSeekConfigStatus } from "@/components/deepseek-connection-dialog";
 import { buildLocalInsights } from "@/lib/local-insights";
-import { confirmLocalMistakes, loadLocalMistakes } from "@/lib/local-store";
+import { confirmLocalMistakes, importLocalMistakes, loadLocalMistakes } from "@/lib/local-store";
 import type { AnalysisDraft, AuthStatus, ImportReport, InsightData, IELTSModule, MistakeRecord, PendingAnalysis } from "@/lib/types";
 import { parseWorkbook } from "@/lib/xlsx-parser";
 
@@ -145,6 +145,22 @@ export default function Home() {
     } finally { setBusy(null); }
   }
 
+  async function restoreCloudMistakes() {
+    if (!authStatus?.authenticated) {
+      setMessage({ tone: "error", text: "请先登录 ChatGPT，再恢复此前的云端错题记录" });
+      return;
+    }
+    if (!window.confirm("将把此前 D1 中的错题合并到当前浏览器本地错题本，不会删除现有记录。继续吗？")) return;
+    setBusy("restore"); setMessage(null);
+    try {
+      const payload = await api<{ items: MistakeRecord[] }>("/api/mistakes");
+      const count = await importLocalMistakes(localUserKey, payload.items);
+      await Promise.all([loadMistakes(), loadInsights()]);
+      setMessage({ tone: "ok", text: count ? "已恢复 " + count + " 条此前错题记录" : "没有找到可恢复的旧错题记录" });
+    } catch (error) {
+      setMessage({ tone: "error", text: error instanceof Error ? error.message : "旧错题记录恢复失败" });
+    } finally { setBusy(null); }
+  }
   return <div className="app-shell">
     <aside className="sidebar">
       <div className="brand"><div className="brand-mark"><BrainCircuit /></div><div><strong>IELTS 错因实验室</strong><span>Evidence before labels</span></div></div>
@@ -157,7 +173,7 @@ export default function Home() {
       <div className="content">
         {section === "import" && <ImportCenter {...{ file, moduleChoice, sourceUrl, report, selected, busy }} setSourceUrl={setSourceUrl} setModuleChoice={setModuleChoice} setSelected={setSelected} readFile={readFile} analyze={analyze} />}
         {section === "review" && <ReviewQueue items={pending} busy={busy} updateDraft={updateDraft} remove={(ids) => { const removed = new Set(ids); setPending((items) => items.filter((item) => !removed.has(item.row.client_id))); }} confirm={confirm} />}
-        {section === "notebook" && <Notebook items={mistakes} reload={loadMistakes} userKey={localUserKey} causeFilter={notebookCause} onCauseFilterChange={setNotebookCause} />}
+        {section === "notebook" && <Notebook items={mistakes} reload={loadMistakes} userKey={localUserKey} causeFilter={notebookCause} onCauseFilterChange={setNotebookCause} restoreCloud={restoreCloudMistakes} restoringCloud={busy === "restore"} />}
         {section === "insights" && <Insights data={insights} onSelectCause={(cause) => { setNotebookCause(cause); setSection("notebook"); }} />}
         {section === "settings" && <SettingsPanel config={config} />}
       </div>

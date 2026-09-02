@@ -1,4 +1,4 @@
-import { ChevronRight, Download, NotebookTabs, Pencil, RefreshCw, Search, Save, Trash2, Upload, X } from "lucide-react";
+import { ChevronRight, Cloud, Download, NotebookTabs, Pencil, RefreshCw, Search, Save, Trash2, Upload, X } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { deleteLocalMistake, importLocalMistakes, updateLocalMistake } from "@/lib/local-store";
 import { CAUSES, TAXONOMY_VERSION, causeLabel, questionTypeLabel } from "@/lib/taxonomy";
@@ -25,12 +25,14 @@ export function matchesCauseFilter(item: MistakeRecord, causeFilter: string): bo
   return item.primary_cause === causeFilter || item.secondary_causes.includes(causeFilter);
 }
 
-export function Notebook({ items, reload, userKey, causeFilter = "", onCauseFilterChange }: {
+export function Notebook({ items, reload, userKey, causeFilter = "", onCauseFilterChange, restoreCloud, restoringCloud = false }: {
   items: MistakeRecord[];
   reload: () => Promise<void>;
   userKey: string;
   causeFilter?: string;
   onCauseFilterChange?: (value: string) => void;
+  restoreCloud?: () => Promise<void>;
+  restoringCloud?: boolean;
 }) {
   const [search, setSearch] = useState("");
   const [module, setModule] = useState("");
@@ -80,7 +82,7 @@ export function Notebook({ items, reload, userKey, causeFilter = "", onCauseFilt
   const backupInput = useRef<HTMLInputElement>(null);
 
   return <section>
-    <Intro kicker="MISTAKE NOTEBOOK" title="不是答案仓库，而是可检索的决策记录。" body="同一道题再次出现会保留新的作答，便于观察错误是否真正消失。" action={<div className="notebook-tools"><button className="ghost" onClick={() => void reload()}><RefreshCw />刷新</button><button className="ghost" onClick={exportBackup}><Download />导出备份</button><button className="ghost" onClick={() => backupInput.current?.click()}><Upload />导入备份</button><input ref={backupInput} type="file" accept="application/json" hidden onChange={(e) => { const file = e.target.files?.[0]; if (file) void importBackup(file); e.currentTarget.value = ""; }} /></div>} />
+    <Intro kicker="MISTAKE NOTEBOOK" title="不是答案仓库，而是可检索的决策记录。" body="同一道题再次出现会保留新的作答，便于观察错误是否真正消失。" action={<div className="notebook-tools"><button className="ghost" onClick={() => void reload()}><RefreshCw />刷新</button>{restoreCloud && <button className="ghost" disabled={restoringCloud} onClick={() => void restoreCloud()}><Cloud />{restoringCloud ? "恢复中…" : "恢复旧云端记录"}</button>}<button className="ghost" onClick={exportBackup}><Download />导出备份</button><button className="ghost" onClick={() => backupInput.current?.click()}><Upload />导入备份</button><input ref={backupInput} type="file" accept="application/json" hidden onChange={(e) => { const file = e.target.files?.[0]; if (file) void importBackup(file); e.currentTarget.value = ""; }} /></div>} />
     {error && <div className="warning">{error}</div>}
     <div className="card filters"><Search /><input placeholder="搜索题目或剑雅来源…" value={search} onChange={(e) => setSearch(e.target.value)} /><select value={module} onChange={(e) => setModule(e.target.value)}><option value="">全部模块</option><option value="reading">阅读</option><option value="listening">听力</option></select><select aria-label="按错因筛选" value={causeFilter} onChange={(e) => onCauseFilterChange?.(e.target.value)}><option value="">全部错因</option>{Object.entries(CAUSES).map(([code, label]) => <option value={code} key={code}>{label}</option>)}</select>{causeFilter && <div className="filter-summary">当前错因：<strong>{causeLabel(causeFilter)}</strong> · 仅显示 {visible.length} 题<button type="button" className="ghost small" onClick={() => onCauseFilterChange?.("")}>清除筛选</button></div>}</div>
     {!visible.length ? <Empty icon={NotebookTabs} title="没有匹配的错题" body="确认第一条分析后，这里会保留题目、作答、证据与训练规则。" /> :
