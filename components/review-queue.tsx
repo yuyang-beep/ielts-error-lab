@@ -18,7 +18,7 @@ export function ReviewQueue({ items, busy, updateDraft, remove, confirm }: {
   const allSelected = items.length > 0 && selectedIds.length === items.length;
 
   return <section>
-    <Intro kicker="HUMAN IN THE LOOP" title="AI 提出假设，你确认真实发生了什么。" body="先核对证据和逻辑，再修改根因。注意力、时间、工作记忆等主观原因只能来自你的笔记或明确确认。" action={items.length ? <button className="primary" disabled={busy === "confirm"} onClick={() => void confirm(items)}>{busy === "confirm" ? <LoaderCircle className="spin" /> : <Check />}确认全部并入库</button> : undefined} />
+    <Intro kicker="HUMAN IN THE LOOP" title="AI 提出假设，你确认真实发生了什么。" body="先核对证据和逻辑，再修改错因。注意力、时间、工作记忆等主观原因只能来自你的笔记或明确确认。" action={items.length ? <button className="primary" disabled={busy === "confirm"} onClick={() => void confirm(items)}>{busy === "confirm" ? <LoaderCircle className="spin" /> : <Check />}确认全部并入库</button> : undefined} />
     {!items.length ? <Empty icon={BookOpenCheck} title="没有待确认草稿" body="从导入中心选择错题并生成分析，草稿会先来到这里。" /> : <>
       <div className="review-batch card"><div><input aria-label="选择全部待确认草稿" type="checkbox" checked={allSelected} onChange={() => setSelected(allSelected ? new Set() : new Set(availableIds))} /><span>批量管理</span><strong>已选 {selectedIds.length} / {items.length}</strong></div><div><button className="ghost" onClick={() => setSelected(new Set(availableIds))}>全选</button><button className="ghost" disabled={!selectedIds.length} onClick={() => setSelected(new Set())}>清空选择</button><button className="danger" disabled={!selectedIds.length} onClick={() => { remove(selectedIds); setSelected(new Set()); }}><Trash2 />删除选中草稿</button></div></div>
       <div className="review-list">{items.map((item, index) => <article className={selected.has(item.row.client_id) ? "card pad review selected" : "card pad review"} key={item.row.client_id}>
@@ -30,8 +30,8 @@ export function ReviewQueue({ items, busy, updateDraft, remove, confirm }: {
         {item.draft.status === "manual_required" && <div className="warning"><CircleAlert />AI 响应暂时失败，已保留证据、陷阱分析和候选错因，请完成确认：{item.draft.error}</div>}
         <div className="fields two">
           <div className="ai-result"><span>AI 识别题型</span><strong>{questionTypeLabel(item.draft.question_type)}</strong><code>{item.draft.question_type}</code></div>
-          <label><span>主要根因</span><select value={item.draft.primary_cause} onChange={(e) => updateDraft(item.row.client_id, { primary_cause: e.target.value, secondary_causes: item.draft.secondary_causes.filter((code) => code !== e.target.value) })}>{Object.entries(CAUSES).map(([code, label]) => <option value={code} key={code}>{code} · {label}</option>)}</select></label>
-          {[0, 1].map((slot) => <label key={slot}><span>次要根因 {slot + 1} <em>可选</em></span><select value={item.draft.secondary_causes[slot] ?? ""} onChange={(e) => {
+          <label><span>主要错因</span><select value={item.draft.primary_cause} onChange={(e) => updateDraft(item.row.client_id, { primary_cause: e.target.value, secondary_causes: item.draft.secondary_causes.filter((code) => code !== e.target.value) })}>{Object.entries(CAUSES).map(([code, label]) => <option value={code} key={code}>{code} · {label}</option>)}</select></label>
+          {[0, 1].map((slot) => <label key={slot}><span>次要错因 {slot + 1} <em>可选</em></span><select value={item.draft.secondary_causes[slot] ?? ""} onChange={(e) => {
             const next = [...item.draft.secondary_causes];
             if (e.target.value) next[slot] = e.target.value;
             else next.splice(slot, 1);
