@@ -31,6 +31,7 @@ const schemaStatements = [
     source_label TEXT NOT NULL,
     question_text TEXT NOT NULL,
     evidence_context TEXT NOT NULL,
+    source_analysis TEXT NOT NULL DEFAULT '',
     correct_answer TEXT NOT NULL,
     source_parts_json TEXT NOT NULL,
     created_at TEXT NOT NULL
@@ -69,7 +70,13 @@ let initialized: Promise<void> | null = null;
 
 export function ensureSchema(db: D1Database): Promise<void> {
   if (!initialized) {
-    initialized = db.batch(schemaStatements.map((sql) => db.prepare(sql))).then(() => undefined);
+    initialized = (async () => {
+      await db.batch(schemaStatements.map((sql) => db.prepare(sql)));
+      const columns = await db.prepare("PRAGMA table_info(questions)").all<{ name: string }>();
+      if (!columns.results.some((column) => column.name === "source_analysis")) {
+        await db.prepare("ALTER TABLE questions ADD COLUMN source_analysis TEXT NOT NULL DEFAULT ''").run();
+      }
+    })();
   }
   return initialized;
 }
@@ -114,14 +121,16 @@ export async function confirmAnalyses(
         .bind(importRowId, batchId, item.row.row_number, item.row.row_fingerprint,
           JSON.stringify({
             日期: item.row.attempted_on_raw, 题号: item.row.source_label, 题目: item.row.question_text,
-            原文: item.row.evidence_context, 笔记: item.row.source_note, 笔记内容标签: item.row.source_tags,
+            原文: item.row.evidence_context, 解析: item.row.source_analysis, 笔记: item.row.source_note, 笔记内容标签: item.row.source_tags,
             我的答案: item.row.user_answer, 正确答案: item.row.correct_answer
           }), JSON.stringify(item.row), JSON.stringify(item.row.warnings), now),
-      db.prepare(`INSERT OR IGNORE INTO questions
-        (id,fingerprint,module,source_label,question_text,evidence_context,correct_answer,source_parts_json,created_at)
-        VALUES (?,?,?,?,?,?,?,?,?)`)
+      db.prepare(`INSERT INTO questions
+        (id,fingerprint,module,source_label,question_text,evidence_context,source_analysis,correct_answer,source_parts_json,created_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?)
+        ON CONFLICT(fingerprint) DO UPDATE SET source_analysis =
+          CASE WHEN LENGTH(excluded.source_analysis) > 0 THEN excluded.source_analysis ELSE questions.source_analysis END`)
         .bind(questionId, item.row.question_fingerprint, item.row.module, item.row.source_label,
-          item.row.question_text, item.row.evidence_context, item.row.correct_answer,
+          item.row.question_text, item.row.evidence_context, item.row.source_analysis, item.row.correct_answer,
           JSON.stringify(item.row.source_parts), now),
       db.prepare(`INSERT INTO attempts
         (id,question_id,import_row_id,attempted_on,attempted_on_raw,date_inferred,user_answer,answer_state,
@@ -157,7 +166,7 @@ export async function listMistakes(
     where.push("(q.question_text LIKE ? OR q.source_label LIKE ?)");
     bindings.push(`%${filters.search}%`, `%${filters.search}%`);
   }
-  const sql = `SELECT a.id, a.attempt_id, q.module, q.source_label, q.question_text, q.evidence_context,
+  const sql = `SELECT a.id, a.attempt_id, q.module, q.source_label, q.question_text, q.evidence_context, q.source_analysis,
     at.user_answer, q.correct_answer, at.attempted_on, at.source_note, at.source_tags_json, at.source_url,
     a.confirmed_json, a.confirmed_at
     FROM analyses a JOIN attempts at ON at.id=a.attempt_id JOIN questions q ON q.id=at.question_id
@@ -169,7 +178,7 @@ export async function listMistakes(
     return {
       id: String(record.id), attempt_id: String(record.attempt_id), module: record.module as "reading" | "listening",
       source_label: String(record.source_label), question_text: String(record.question_text),
-      evidence_context: String(record.evidence_context), user_answer: typeof record.user_answer === "string" ? record.user_answer : null,
+      evidence_context: String(record.evidence_context), source_analysis: typeof record.source_analysis === "string" ? record.source_analysis : "", user_answer: typeof record.user_answer === "string" ? record.user_answer : null,
       correct_answer: String(record.correct_answer), attempted_on: typeof record.attempted_on === "string" ? record.attempted_on : null,
       source_note: String(record.source_note), source_tags: parseJson(record.source_tags_json, []),
       source_url: typeof record.source_url === "string" ? record.source_url : null, ...analysis, confirmed_at: String(record.confirmed_at)

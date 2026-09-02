@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { inferQuestionType, normalizeAnswer, normalizeCorrectAnswer, parseAttemptDate, parseSourceLabel, plainText, splitTags } from "@/lib/normalization";
+import { getCauseCandidates, isMeaningfulEvidence } from "@/lib/cause-guidance";
 
 describe("数据归一化", () => {
   it("将未作答转换为 null 且保留状态", () => {
@@ -28,5 +29,14 @@ describe("数据归一化", () => {
     expect(inferQuestionType("Choose TRUE / FALSE / NOT GIVEN", "reading")).toBe("R_TFNG");
     expect(plainText("<b>题目</b><script>alert(1)</script>")).toBe("题目 alert(1)");
     expect(splitTags("定位、同义替换，逻辑")).toEqual(["定位", "同义替换", "逻辑"]);
+  });
+
+  it("按题型给出常见错因候选，但忽略数字编号", () => {
+    expect(isMeaningfulEvidence("12")).toBe(false);
+    expect(isMeaningfulEvidence("定位不准确")).toBe(true);
+    const candidates = getCauseCandidates({ module: "reading", question_type_hint: "R_TFNG", source_tags: ["12"] });
+    expect(candidates.map((item) => item.code)).toEqual([
+      "S_TFNG_BOUNDARY", "S_SCOPE", "C_LOGIC", "C_PARAPHRASE", "S_LOCATE"
+    ]);
   });
 });

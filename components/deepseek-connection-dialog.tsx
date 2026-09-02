@@ -23,15 +23,14 @@ export function DeepSeekConnectionDialog({ open, checking, config, onClose, onRe
   const connected = config?.deepseek_configured === true;
   const dbReady = config?.database_configured === true;
 
-  return <div className="connection-backdrop" onMouseDown={onClose}>
-    <section
-      aria-describedby="deepseek-connection-description"
-      aria-labelledby="deepseek-connection-title"
-      aria-modal="true"
-      className="connection-dialog"
-      onMouseDown={(event) => event.stopPropagation()}
-      role="dialog"
-    >
+  return <dialog
+    aria-describedby="deepseek-connection-description"
+    aria-labelledby="deepseek-connection-title"
+    aria-modal="true"
+    className="connection-backdrop"
+    open
+  >
+    <section className="connection-dialog">
       <button aria-label="关闭接入状态" className="connection-close" onClick={onClose}><X /></button>
       <div className={connected ? "connection-symbol connected" : "connection-symbol"}>
         {checking ? <LoaderCircle className="spin" /> : connected ? <CheckCircle2 /> : <KeyRound />}
@@ -67,5 +66,5 @@ export function DeepSeekConnectionDialog({ open, checking, config, onClose, onRe
       </div>
       <button className="connection-later" onClick={onClose}>{connected ? "开始使用" : "稍后设置"}</button>
     </section>
-  </div>;
+  </dialog>;
 }

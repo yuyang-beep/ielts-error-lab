@@ -20,6 +20,7 @@ export interface NormalizedMistake {
   source_parts: SourceParts;
   question_text: string;
   evidence_context: string;
+  source_analysis: string;
   source_note: string;
   source_tags: string[];
   user_answer: string | null;
@@ -58,7 +59,6 @@ export interface AnalysisDraft {
   trap_mechanism: string;
   diagnostic_question: string;
   remediation_rule: string;
-  micro_drill: string;
   confidence: number;
   provenance: Array<"text_evidence" | "user_note" | "user_confirmation" | "ai_inference">;
   status?: "draft" | "manual_required";
@@ -81,6 +81,7 @@ export interface MistakeRecord {
   source_label: string;
   question_text: string;
   evidence_context: string;
+  source_analysis: string;
   user_answer: string | null;
   correct_answer: string;
   attempted_on: string | null;
@@ -95,7 +96,6 @@ export interface MistakeRecord {
   trap_mechanism: string;
   diagnostic_question: string;
   remediation_rule: string;
-  micro_drill: string;
   confidence: number;
   confirmed_at: string;
 }

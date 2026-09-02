@@ -11,6 +11,8 @@ export const REQUIRED_HEADERS = [
   "正确答案"
 ] as const;
 
+export const SOURCE_ANALYSIS_HEADERS = ["解析", "题目解析", "答案解析", "官方解析", "错题解析"] as const;
+
 export type RawRow = Record<string, unknown>;
 
 export function plainText(value: unknown): string {
@@ -143,6 +145,8 @@ export async function normalizeRawRow(
   if (date.warning) warnings.push(date.warning);
   const questionText = plainText(raw["题目"]);
   const evidence = plainText(raw["原文"]);
+  const sourceAnalysis = SOURCE_ANALYSIS_HEADERS.map((header) => plainText(raw[header]))
+    .filter(Boolean).filter((value, index, values) => values.indexOf(value) === index).join("\n");
   const sourceLabel = plainText(raw["题号"]);
   const user = normalizeAnswer(raw["我的答案"]);
   const correct = normalizeCorrectAnswer(raw["正确答案"]);
@@ -158,7 +162,8 @@ export async function normalizeRawRow(
       attemptedRaw,
       user.answer,
       plainText(raw["笔记"]),
-      evidence
+      evidence,
+      sourceAnalysis
     ])
   );
 
@@ -172,6 +177,7 @@ export async function normalizeRawRow(
     source_parts: parseSourceLabel(sourceLabel),
     question_text: questionText,
     evidence_context: evidence,
+    source_analysis: sourceAnalysis,
     source_note: plainText(raw["笔记"]),
     source_tags: splitTags(raw["笔记内容标签"]),
     user_answer: user.answer,

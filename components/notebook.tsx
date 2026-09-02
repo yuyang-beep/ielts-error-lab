@@ -22,7 +22,7 @@ export function Notebook({ items, reload }: { items: MistakeRecord[]; reload: ()
         <small>{item.source_label} · {item.attempted_on ?? "日期待确认"}</small><h3>{item.question_text}</h3>
         <div className="answers"><span>你的答案<strong>{item.user_answer ?? "未作答"}</strong></span><ChevronRight /><span>正确答案<strong>{item.correct_answer}</strong></span></div>
         <div className="cause"><span>主要根因</span><strong>{causeLabel(item.primary_cause)}</strong><code>{item.primary_cause}</code></div>
-        <p>{item.reasoning_chain}</p><div className="rule"><Sparkles /><div><span>下次规则</span><p>{item.remediation_rule}</p></div></div>
+        <p>{item.reasoning_chain}</p>{item.trap_mechanism && <div className="trap-note"><span>陷阱机制</span><p>{item.trap_mechanism}</p></div>}<div className="rule"><Sparkles /><div><span>下次规则</span><p>{item.remediation_rule}</p></div></div>
       </article>)}</div>}
   </section>;
 }

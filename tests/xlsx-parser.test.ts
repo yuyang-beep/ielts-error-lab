@@ -46,11 +46,12 @@ describe("爱听写 XLSX 输入契约", () => {
   });
 
   it("不依赖列顺序、允许额外列并警告公式", async () => {
-    const reordered = ["正确答案", "题目", "日期", "额外信息", "我的答案", "题号", "原文", "笔记内容标签", "笔记"];
-    const file = workbookFile([reordered, ["B", "Choose A. one B. two", "2026-08-01", "ignore", "A", "剑雅19 Test 1 Passage 2 Q15", "evidence", "选项，定位", ""]], "阅读.xlsx", true);
+    const reordered = ["正确答案", "题目", "日期", "答案解析", "额外信息", "我的答案", "题号", "原文", "笔记内容标签", "笔记"];
+    const file = workbookFile([reordered, ["B", "Choose A. one B. two", "2026-08-01", "B 对应原文的同义改写", "ignore", "A", "剑雅19 Test 1 Passage 2 Q15", "evidence", "选项，定位", ""]], "阅读.xlsx", true);
     const report = await parseWorkbook(file);
     expect(report.blocking_errors).toEqual([]);
     expect(report.extra_columns).toEqual(["额外信息"]);
+    expect(report.rows[0].source_analysis).toBe("B 对应原文的同义改写");
     expect(report.warnings.join(" ")).toContain("公式");
   });
 

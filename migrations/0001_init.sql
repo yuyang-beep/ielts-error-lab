@@ -20,6 +20,7 @@ CREATE INDEX IF NOT EXISTS idx_import_rows_fingerprint ON import_rows(row_finger
 CREATE TABLE IF NOT EXISTS questions (
   id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL UNIQUE, module TEXT NOT NULL,
   source_label TEXT NOT NULL, question_text TEXT NOT NULL, evidence_context TEXT NOT NULL,
+  source_analysis TEXT NOT NULL DEFAULT '',
   correct_answer TEXT NOT NULL, source_parts_json TEXT NOT NULL, created_at TEXT NOT NULL
 );
 
