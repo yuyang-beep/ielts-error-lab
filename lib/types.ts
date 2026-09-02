@@ -77,6 +77,7 @@ export interface MistakeRecord {
   id: string;
   attempt_id: string;
   client_id: string;
+  row_fingerprint?: string;
   module: IELTSModule;
   source_label: string;
   question_text: string;
@@ -107,4 +108,10 @@ export interface InsightData {
   by_cause: Array<{ label: string; count: number }>;
   trend: Array<{ label: string; count: number }>;
   matrix: Array<{ question_type: string; cause: string; count: number }>;
+}
+
+export interface AuthStatus {
+  authenticated: boolean;
+  email: string | null;
+  name: string | null;
 }

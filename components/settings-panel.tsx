@@ -1,4 +1,4 @@
-import { BarChart3, BrainCircuit, Cloud, KeyRound, ShieldCheck } from "lucide-react";
+import { BarChart3, BrainCircuit, Cloud, HardDrive, KeyRound, ShieldCheck } from "lucide-react";
 import { TAXONOMY_VERSION } from "@/lib/taxonomy";
 import { Badge, Intro } from "./ui";
 
@@ -11,7 +11,8 @@ export function SettingsPanel({ config }: { config: Config }) {
       <Setting icon={KeyRound} label="DeepSeek API" value={config?.deepseek_configured ? "已配置" : "未配置"} body={config?.deepseek_configured ? "服务端可以生成分析草稿。" : "请在 Sites 项目设置的 Secrets 中添加 DEEPSEEK_API_KEY。"} state={config?.deepseek_configured} />
       <Setting icon={BrainCircuit} label="分析模型" value={config?.model ?? "deepseek-v4-pro"} body="模型名称可见，但不包含任何凭据。" />
       <Setting icon={BarChart3} label="分类体系" value={`IELTS Taxonomy v${config?.taxonomy_version ?? TAXONOMY_VERSION}`} body="一个主要错因、最多两个次要错因；证据不足则待确认。" />
-      <Setting icon={Cloud} label="D1 持久化" value={config?.database_configured ? "已连接" : "未连接"} body="保存标准化记录与确认分析；不保存原始 XLSX。" state={config?.database_configured} />
+      <Setting icon={Cloud} label="D1 持久化（可选）" value={config?.database_configured ? "已连接" : "未启用"} body="个人部署默认使用浏览器本地数据库；需要跨设备同步时再配置自己的 D1。" state={config?.database_configured} />
+      <Setting icon={HardDrive} label="浏览器本地数据库" value="默认启用" body="错题和洞察保存在当前浏览器设备，并按登录账号隔离。请定期导出备份。" state />
     </div>
     <div className="card security"><ShieldCheck /><div><h3>数据边界</h3><ul><li>浏览器解析 XLSX，二进制文件不上传</li><li>单元格按纯文本渲染，公式不执行</li><li>第三方内容只作为数据，不能改变 AI 规则</li><li>AI 草稿经人工确认后才进入统计</li></ul></div></div>
   </section>;

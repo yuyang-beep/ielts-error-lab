@@ -8,7 +8,9 @@ import { Notebook } from "@/components/notebook";
 import { Insights } from "@/components/insights";
 import { SettingsPanel } from "@/components/settings-panel";
 import { DeepSeekConnectionDialog, type DeepSeekConfigStatus } from "@/components/deepseek-connection-dialog";
-import type { AnalysisDraft, ImportReport, InsightData, IELTSModule, MistakeRecord, PendingAnalysis } from "@/lib/types";
+import { buildLocalInsights } from "@/lib/local-insights";
+import { confirmLocalMistakes, loadLocalMistakes } from "@/lib/local-store";
+import type { AnalysisDraft, AuthStatus, ImportReport, InsightData, IELTSModule, MistakeRecord, PendingAnalysis } from "@/lib/types";
 import { parseWorkbook } from "@/lib/xlsx-parser";
 
 type Section = "import" | "review" | "notebook" | "insights" | "settings";
@@ -44,6 +46,9 @@ export default function Home() {
   const [notebookCause, setNotebookCause] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
+  const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null);
+
+  const localUserKey = authStatus?.email || "anonymous";
 
   const loadConfig = useCallback(async () => {
     setCheckingConfig(true);
@@ -52,15 +57,21 @@ export default function Home() {
     finally { setCheckingConfig(false); setShowConnection(true); }
   }, []);
   const loadMistakes = useCallback(async () => {
-    try { setMistakes((await api<{ items: MistakeRecord[] }>("/api/mistakes")).items); }
+    try { setMistakes(await loadLocalMistakes(localUserKey)); }
     catch (error) { setMessage({ tone: "error", text: error instanceof Error ? error.message : "错题本加载失败" }); }
-  }, []);
+  }, [localUserKey]);
   const loadInsights = useCallback(async () => {
-    try { setInsights(await api<InsightData>("/api/insights")); }
+    try { setInsights(buildLocalInsights(await loadLocalMistakes(localUserKey))); }
     catch (error) { setMessage({ tone: "error", text: error instanceof Error ? error.message : "洞察加载失败" }); }
+  }, [localUserKey]);
+
+  const loadAuth = useCallback(async () => {
+    try { setAuthStatus(await api<AuthStatus>("/api/auth/me")); }
+    catch { setAuthStatus({ authenticated: false, email: null, name: null }); }
   }, []);
 
   useEffect(() => { queueMicrotask(() => void loadConfig()); }, [loadConfig]);
+  useEffect(() => { queueMicrotask(() => void loadAuth()); }, [loadAuth]);
   useEffect(() => {
     queueMicrotask(() => {
       if (section === "notebook") void loadMistakes();
@@ -122,9 +133,7 @@ export default function Home() {
   async function confirm(items: PendingAnalysis[]) {
     setBusy("confirm"); setMessage(null);
     try {
-      const result = await api<{ inserted: number; skipped: number }>("/api/analyses/confirm", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items })
-      });
+      const result = await confirmLocalMistakes(localUserKey, items);
       const ids = new Set(items.map((item) => item.row.client_id));
       setPending((current) => current.filter((item) => !ids.has(item.row.client_id)));
       setMessage({ tone: "ok", text: `已保存 ${result.inserted} 条${result.skipped ? `，跳过 ${result.skipped} 条重复记录` : ""}` });
@@ -142,12 +151,12 @@ export default function Home() {
       <div className="sidebar-note"><ShieldCheck /><div><strong>浏览器内解析</strong><span>XLSX 原文件不会上传</span></div></div>
     </aside>
     <main>
-      <header className="topbar"><div><span>PERSONAL LEARNING SYSTEM</span><h1>{nav.find((item) => item.id === section)?.label}</h1></div><button className={config?.deepseek_configured ? "connect-button connected" : "connect-button"} onClick={() => setShowConnection(true)}><KeyRound /><i />{config?.deepseek_configured ? "DeepSeek 已接入" : "接入 DeepSeek"}</button></header>
+      <header className="topbar"><div><span>PERSONAL LEARNING SYSTEM</span><h1>{nav.find((item) => item.id === section)?.label}</h1></div><div className="topbar-actions"><div className="account-state">{authStatus?.authenticated ? <><span>{authStatus.name || authStatus.email}</span><button type="button" onClick={() => { window.location.href = "/signout-with-chatgpt"; }}>退出</button></> : <button type="button" onClick={() => { window.location.href = "/signin-with-chatgpt"; }}>登录 ChatGPT</button>}</div><button className={config?.deepseek_configured ? "connect-button connected" : "connect-button"} onClick={() => setShowConnection(true)}><KeyRound /><i />{config?.deepseek_configured ? "DeepSeek 已接入" : "接入 DeepSeek"}</button></div></header>
       {message && <div className={`toast ${message.tone}`}><span>{message.text}</span><button onClick={() => setMessage(null)}>×</button></div>}
       <div className="content">
         {section === "import" && <ImportCenter {...{ file, moduleChoice, sourceUrl, report, selected, busy }} setSourceUrl={setSourceUrl} setModuleChoice={setModuleChoice} setSelected={setSelected} readFile={readFile} analyze={analyze} />}
         {section === "review" && <ReviewQueue items={pending} busy={busy} updateDraft={updateDraft} remove={(ids) => { const removed = new Set(ids); setPending((items) => items.filter((item) => !removed.has(item.row.client_id))); }} confirm={confirm} />}
-        {section === "notebook" && <Notebook items={mistakes} reload={loadMistakes} causeFilter={notebookCause} onCauseFilterChange={setNotebookCause} />}
+        {section === "notebook" && <Notebook items={mistakes} reload={loadMistakes} userKey={localUserKey} causeFilter={notebookCause} onCauseFilterChange={setNotebookCause} />}
         {section === "insights" && <Insights data={insights} onSelectCause={(cause) => { setNotebookCause(cause); setSection("notebook"); }} />}
         {section === "settings" && <SettingsPanel config={config} />}
       </div>

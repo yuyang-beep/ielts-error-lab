@@ -1,15 +1,9 @@
-import { ChevronRight, NotebookTabs, Pencil, RefreshCw, Search, Save, Trash2, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ChevronRight, Download, NotebookTabs, Pencil, RefreshCw, Search, Save, Trash2, Upload, X } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { deleteLocalMistake, importLocalMistakes, updateLocalMistake } from "@/lib/local-store";
 import { CAUSES, TAXONOMY_VERSION, causeLabel, questionTypeLabel } from "@/lib/taxonomy";
 import type { AnalysisDraft, MistakeRecord } from "@/lib/types";
 import { Badge, Empty, Intro } from "./ui";
-
-async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, init);
-  const payload = await response.json() as T & { error?: string };
-  if (!response.ok) throw new Error(payload.error || "请求失败");
-  return payload;
-}
 
 function draftFromItem(item: MistakeRecord): AnalysisDraft {
   return {
@@ -31,9 +25,10 @@ export function matchesCauseFilter(item: MistakeRecord, causeFilter: string): bo
   return item.primary_cause === causeFilter || item.secondary_causes.includes(causeFilter);
 }
 
-export function Notebook({ items, reload, causeFilter = "", onCauseFilterChange }: {
+export function Notebook({ items, reload, userKey, causeFilter = "", onCauseFilterChange }: {
   items: MistakeRecord[];
   reload: () => Promise<void>;
+  userKey: string;
   causeFilter?: string;
   onCauseFilterChange?: (value: string) => void;
 }) {
@@ -56,9 +51,7 @@ export function Notebook({ items, reload, causeFilter = "", onCauseFilterChange 
     if (!editingId || !editDraft) return;
     setBusyId(editingId); setError(null);
     try {
-      await requestJson(`/api/mistakes/${encodeURIComponent(editingId)}`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ draft: editDraft })
-      });
+      await updateLocalMistake(userKey, editingId, editDraft);
       setEditingId(null); setEditDraft(null); await reload();
     } catch (err) { setError(err instanceof Error ? err.message : "保存失败"); }
     finally { setBusyId(null); }
@@ -66,13 +59,28 @@ export function Notebook({ items, reload, causeFilter = "", onCauseFilterChange 
   async function remove(item: MistakeRecord) {
     if (!window.confirm(`确定删除“${item.source_label}”这条已确认错题吗？删除后不可恢复。`)) return;
     setBusyId(item.id); setError(null);
-    try { await requestJson(`/api/mistakes/${encodeURIComponent(item.id)}`, { method: "DELETE" }); await reload(); }
+    try { await deleteLocalMistake(userKey, item.id); await reload(); }
     catch (err) { setError(err instanceof Error ? err.message : "删除失败"); }
     finally { setBusyId(null); }
   }
+  function exportBackup() {
+    const payload = JSON.stringify({ version: 1, exported_at: new Date().toISOString(), records: items }, null, 2);
+    const url = URL.createObjectURL(new Blob([payload], { type: "application/json" }));
+    const anchor = document.createElement("a"); anchor.href = url; anchor.download = `ielts-error-lab-backup-${new Date().toISOString().slice(0, 10)}.json`; anchor.click(); URL.revokeObjectURL(url);
+  }
+  async function importBackup(file: File) {
+    setError(null);
+    try {
+      const payload = JSON.parse(await file.text()) as { records?: unknown };
+      if (!Array.isArray(payload.records)) throw new Error("备份文件格式不正确");
+      const count = await importLocalMistakes(userKey, payload.records as MistakeRecord[]);
+      await reload(); setError(`已导入 ${count} 条本地记录`);
+    } catch (err) { setError(err instanceof Error ? err.message : "备份导入失败"); }
+  }
+  const backupInput = useRef<HTMLInputElement>(null);
 
   return <section>
-    <Intro kicker="MISTAKE NOTEBOOK" title="不是答案仓库，而是可检索的决策记录。" body="同一道题再次出现会保留新的作答，便于观察错误是否真正消失。" action={<button className="ghost" onClick={() => void reload()}><RefreshCw />刷新</button>} />
+    <Intro kicker="MISTAKE NOTEBOOK" title="不是答案仓库，而是可检索的决策记录。" body="同一道题再次出现会保留新的作答，便于观察错误是否真正消失。" action={<div className="notebook-tools"><button className="ghost" onClick={() => void reload()}><RefreshCw />刷新</button><button className="ghost" onClick={exportBackup}><Download />导出备份</button><button className="ghost" onClick={() => backupInput.current?.click()}><Upload />导入备份</button><input ref={backupInput} type="file" accept="application/json" hidden onChange={(e) => { const file = e.target.files?.[0]; if (file) void importBackup(file); e.currentTarget.value = ""; }} /></div>} />
     {error && <div className="warning">{error}</div>}
     <div className="card filters"><Search /><input placeholder="搜索题目或剑雅来源…" value={search} onChange={(e) => setSearch(e.target.value)} /><select value={module} onChange={(e) => setModule(e.target.value)}><option value="">全部模块</option><option value="reading">阅读</option><option value="listening">听力</option></select><select aria-label="按错因筛选" value={causeFilter} onChange={(e) => onCauseFilterChange?.(e.target.value)}><option value="">全部错因</option>{Object.entries(CAUSES).map(([code, label]) => <option value={code} key={code}>{label}</option>)}</select>{causeFilter && <div className="filter-summary">当前错因：<strong>{causeLabel(causeFilter)}</strong> · 仅显示 {visible.length} 题<button type="button" className="ghost small" onClick={() => onCauseFilterChange?.("")}>清除筛选</button></div>}</div>
     {!visible.length ? <Empty icon={NotebookTabs} title="没有匹配的错题" body="确认第一条分析后，这里会保留题目、作答、证据与训练规则。" /> :
