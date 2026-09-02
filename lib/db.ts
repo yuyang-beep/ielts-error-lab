@@ -94,6 +94,8 @@ export async function confirmAnalyses(
   model: string
 ) {
   await ensureSchema(db);
+  const missingEvidence = items.filter((item) => !item.draft.user_evidence?.trim());
+  if (missingEvidence.length) throw new Error("错因依据不能为空");
   const now = new Date().toISOString();
   const statements: D1PreparedStatement[] = [];
   let inserted = 0;
@@ -111,6 +113,8 @@ export async function confirmAnalyses(
       const existing = await db.prepare("SELECT id FROM analyses WHERE id = ?").bind(analysisId).first();
       if (existing) { skipped += 1; continue; }
     }
+    const userEvidence = item.draft.user_evidence!.trim();
+    const confirmedDraft: AnalysisDraft = { ...item.draft, evidence_span: userEvidence, trap_mechanism: userEvidence };
     statements.push(
       db.prepare(`INSERT OR IGNORE INTO import_batches
         (id,file_hash,file_name,module,source_url,imported_at,stats_json) VALUES (?,?,?,?,?,?,?)`)
@@ -141,7 +145,7 @@ export async function confirmAnalyses(
       db.prepare(`INSERT INTO analyses
         (id,attempt_id,ai_draft_json,confirmed_json,model,prompt_version,taxonomy_version,confidence,status,confirmed_at)
         VALUES (?,?,?,?,?,?,?,?,?,?)`)
-        .bind(analysisId, attemptId, JSON.stringify(item.draft), JSON.stringify(item.draft), model,
+        .bind(analysisId, attemptId, JSON.stringify(item.draft), JSON.stringify(confirmedDraft), model,
           PROMPT_VERSION, TAXONOMY_VERSION, item.draft.confidence, "confirmed", now)
     );
     inserted += 1;

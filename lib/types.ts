@@ -66,6 +66,7 @@ export interface AnalysisDraft {
   confidence: number;
   provenance: Array<"text_evidence" | "user_note" | "user_confirmation" | "ai_inference">;
   vocabulary?: VocabularyEntry[];
+  user_evidence?: string;
   status?: "draft" | "manual_required";
   error?: string;
 }
@@ -105,6 +106,7 @@ export interface MistakeRecord {
   confidence: number;
   provenance: Array<"text_evidence" | "user_note" | "user_confirmation" | "ai_inference">;
   vocabulary?: VocabularyEntry[];
+  user_evidence?: string;
   confirmed_at: string;
 }
 

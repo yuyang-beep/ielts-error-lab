@@ -21,6 +21,7 @@ function openDatabase(): Promise<IDBDatabase> {
 }
 
 function toRecord(item: PendingAnalysis): MistakeRecord {
+  const userEvidence = item.draft.user_evidence?.trim() || "";
   return {
     id: `local_${crypto.randomUUID()}`,
     attempt_id: `attempt_${crypto.randomUUID()}`,
@@ -41,8 +42,8 @@ function toRecord(item: PendingAnalysis): MistakeRecord {
     primary_cause: item.draft.primary_cause,
     secondary_causes: item.draft.secondary_causes,
     answer_comparison: item.draft.answer_comparison,
-    evidence_span: item.draft.evidence_span,
-    trap_mechanism: item.draft.trap_mechanism,
+    evidence_span: userEvidence,
+    trap_mechanism: userEvidence,
     diagnostic_question: item.draft.diagnostic_question,
     confidence: item.draft.confidence,
     provenance: ["user_confirmation"],
@@ -69,6 +70,8 @@ export async function loadLocalMistakes(user: string): Promise<MistakeRecord[]> 
 }
 
 export async function confirmLocalMistakes(user: string, items: PendingAnalysis[]): Promise<{ inserted: number; skipped: number }> {
+  const missingEvidence = items.filter((item) => !item.draft.user_evidence?.trim());
+  if (missingEvidence.length) throw new Error("请先填写所有草稿的“错因依据”，填写后才能提交");
   const key = ownerKey(user);
   const existing = await loadLocalMistakes(key);
   const fingerprints = new Set(existing.map((item) => item.row_fingerprint).filter(Boolean));

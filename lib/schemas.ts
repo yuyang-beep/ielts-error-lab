@@ -35,17 +35,22 @@ export const analysisDraftSchema = z.object({
   diagnostic_question: z.string().min(1).max(2_000),
   confidence: z.number().min(0).max(1),
   provenance: z.array(z.enum(["text_evidence", "user_note", "user_confirmation", "ai_inference"])).min(1),
-  vocabulary: z.array(z.object({ word: z.string().min(1).max(200), translation: z.string().min(1).max(500) })).max(100).optional()
+  vocabulary: z.array(z.object({ word: z.string().min(1).max(200), translation: z.string().min(1).max(500) })).max(100).optional(),
+  user_evidence: z.string().max(10_000).optional()
 });
 
 export const analyzeRequestSchema = z.object({
   rows: z.array(normalizedMistakeSchema).min(1).max(20)
 });
 
+const confirmedAnalysisDraftSchema = analysisDraftSchema.extend({
+  user_evidence: z.string().trim().min(1).max(10_000)
+});
+
 export const confirmRequestSchema = z.object({
   items: z.array(z.object({
     row: normalizedMistakeSchema,
-    draft: analysisDraftSchema,
+    draft: confirmedAnalysisDraftSchema,
     source_url: z.string().url().or(z.literal("")),
     file_name: z.string().min(1).max(500),
     file_hash: z.string().regex(/^[a-f0-9]{64}$/),
