@@ -145,7 +145,7 @@ export default function Home() {
       {message && <div className={`toast ${message.tone}`}><span>{message.text}</span><button onClick={() => setMessage(null)}>×</button></div>}
       <div className="content">
         {section === "import" && <ImportCenter {...{ file, moduleChoice, sourceUrl, report, selected, busy }} setSourceUrl={setSourceUrl} setModuleChoice={setModuleChoice} setSelected={setSelected} readFile={readFile} analyze={analyze} />}
-        {section === "review" && <ReviewQueue items={pending} busy={busy} updateDraft={updateDraft} remove={(id) => setPending((items) => items.filter((item) => item.row.client_id !== id))} confirm={confirm} />}
+        {section === "review" && <ReviewQueue items={pending} busy={busy} updateDraft={updateDraft} remove={(ids) => { const removed = new Set(ids); setPending((items) => items.filter((item) => !removed.has(item.row.client_id))); }} confirm={confirm} />}
         {section === "notebook" && <Notebook items={mistakes} reload={loadMistakes} />}
         {section === "insights" && <Insights data={insights} />}
         {section === "settings" && <SettingsPanel config={config} />}

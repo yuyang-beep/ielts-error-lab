@@ -30,10 +30,8 @@ export const analysisDraftSchema = z.object({
   primary_cause: z.enum(CAUSE_CODES as [string, ...string[]]),
   secondary_causes: z.array(z.enum(CAUSE_CODES as [string, ...string[]])).max(2),
   evidence_span: z.string().max(10_000),
-  reasoning_chain: z.string().min(1).max(10_000),
   trap_mechanism: z.string().min(1).max(5_000),
   diagnostic_question: z.string().min(1).max(2_000),
-  remediation_rule: z.string().min(1).max(5_000),
   confidence: z.number().min(0).max(1),
   provenance: z.array(z.enum(["text_evidence", "user_note", "user_confirmation", "ai_inference"])).min(1)
 });
@@ -58,8 +56,7 @@ export const analysisJsonSchema = {
   additionalProperties: false,
   required: [
     "client_id", "question_type", "primary_cause", "secondary_causes",
-    "evidence_span", "reasoning_chain", "trap_mechanism", "diagnostic_question",
-    "remediation_rule", "confidence", "provenance"
+    "evidence_span", "trap_mechanism", "diagnostic_question", "confidence", "provenance"
   ],
   properties: {
     client_id: { type: "string" },
@@ -67,10 +64,8 @@ export const analysisJsonSchema = {
     primary_cause: { type: "string", enum: CAUSE_CODES },
     secondary_causes: { type: "array", maxItems: 2, items: { type: "string", enum: CAUSE_CODES } },
     evidence_span: { type: "string" },
-    reasoning_chain: { type: "string" },
     trap_mechanism: { type: "string", minLength: 1 },
     diagnostic_question: { type: "string" },
-    remediation_rule: { type: "string" },
     confidence: { type: "number", minimum: 0, maximum: 1 },
     provenance: {
       type: "array",

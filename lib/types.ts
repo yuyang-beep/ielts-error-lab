@@ -55,10 +55,8 @@ export interface AnalysisDraft {
   primary_cause: string;
   secondary_causes: string[];
   evidence_span: string;
-  reasoning_chain: string;
   trap_mechanism: string;
   diagnostic_question: string;
-  remediation_rule: string;
   confidence: number;
   provenance: Array<"text_evidence" | "user_note" | "user_confirmation" | "ai_inference">;
   status?: "draft" | "manual_required";
@@ -92,10 +90,8 @@ export interface MistakeRecord {
   primary_cause: string;
   secondary_causes: string[];
   evidence_span: string;
-  reasoning_chain: string;
   trap_mechanism: string;
   diagnostic_question: string;
-  remediation_rule: string;
   confidence: number;
   confirmed_at: string;
 }

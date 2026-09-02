@@ -14,9 +14,8 @@ const row: NormalizedMistake = {
 
 const valid = {
   client_id: "client-1", question_type: "R_TFNG", primary_cause: "U_UNCONFIRMED",
-  secondary_causes: [], evidence_span: "", reasoning_chain: "原文未说明最喜欢。",
+  secondary_causes: [], evidence_span: "",
   trap_mechanism: "把积极评价扩大为偏好判断", diagnostic_question: "你当时卡在哪一步？",
-  remediation_rule: "只比较题干命题与原文明确范围。",
   confidence: 0.72, provenance: ["text_evidence", "ai_inference"]
 };
 

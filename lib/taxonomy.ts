@@ -1,5 +1,5 @@
 export const TAXONOMY_VERSION = "1.1.0";
-export const PROMPT_VERSION = "2.0.0";
+export const PROMPT_VERSION = "2.1.0";
 
 export const QUESTION_TYPES = {
   reading: {
