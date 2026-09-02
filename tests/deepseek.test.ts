@@ -14,7 +14,7 @@ const row: NormalizedMistake = {
 
 const valid = {
   client_id: "client-1", question_type: "R_TFNG", primary_cause: "U_UNCONFIRMED",
-  secondary_causes: [], evidence_span: "",
+  secondary_causes: [], answer_comparison: "题干命题：…\n我的答案：NG\n正确答案：NG\n答案差异：一致", evidence_span: "",
   trap_mechanism: "把积极评价扩大为偏好判断", diagnostic_question: "你当时卡在哪一步？",
   confidence: 0.72, provenance: ["text_evidence", "ai_inference"]
 };
@@ -36,6 +36,7 @@ describe("DeepSeek 结构化分析", () => {
     const request = JSON.parse(String(fetcher.mock.calls[0][1]?.body));
     expect(request).toMatchObject({ reasoning: { effort: "low" }, max_output_tokens: 2000 });
     expect(request.instructions).toContain("trap_mechanism 必须交付");
+    expect(request.instructions).toContain("answer_comparison");
     expect(request.input).not.toContain("micro_drill");
   });
 

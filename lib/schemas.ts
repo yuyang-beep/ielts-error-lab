@@ -29,6 +29,7 @@ export const analysisDraftSchema = z.object({
   question_type: z.enum(QUESTION_TYPE_CODES as [string, ...string[]]),
   primary_cause: z.enum(CAUSE_CODES as [string, ...string[]]),
   secondary_causes: z.array(z.enum(CAUSE_CODES as [string, ...string[]])).max(2),
+  answer_comparison: z.string().min(1).max(8_000),
   evidence_span: z.string().max(10_000),
   trap_mechanism: z.string().min(1).max(5_000),
   diagnostic_question: z.string().min(1).max(2_000),
@@ -56,13 +57,14 @@ export const analysisJsonSchema = {
   additionalProperties: false,
   required: [
     "client_id", "question_type", "primary_cause", "secondary_causes",
-    "evidence_span", "trap_mechanism", "diagnostic_question", "confidence", "provenance"
+    "answer_comparison", "evidence_span", "trap_mechanism", "diagnostic_question", "confidence", "provenance"
   ],
   properties: {
     client_id: { type: "string" },
     question_type: { type: "string", enum: QUESTION_TYPE_CODES },
     primary_cause: { type: "string", enum: CAUSE_CODES },
     secondary_causes: { type: "array", maxItems: 2, items: { type: "string", enum: CAUSE_CODES } },
+    answer_comparison: { type: "string", minLength: 1 },
     evidence_span: { type: "string" },
     trap_mechanism: { type: "string", minLength: 1 },
     diagnostic_question: { type: "string" },

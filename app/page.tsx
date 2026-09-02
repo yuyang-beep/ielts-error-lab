@@ -41,6 +41,7 @@ export default function Home() {
   const [checkingConfig, setCheckingConfig] = useState(true);
   const [mistakes, setMistakes] = useState<MistakeRecord[]>([]);
   const [insights, setInsights] = useState<InsightData | null>(null);
+  const [notebookCause, setNotebookCause] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
 
@@ -146,8 +147,8 @@ export default function Home() {
       <div className="content">
         {section === "import" && <ImportCenter {...{ file, moduleChoice, sourceUrl, report, selected, busy }} setSourceUrl={setSourceUrl} setModuleChoice={setModuleChoice} setSelected={setSelected} readFile={readFile} analyze={analyze} />}
         {section === "review" && <ReviewQueue items={pending} busy={busy} updateDraft={updateDraft} remove={(ids) => { const removed = new Set(ids); setPending((items) => items.filter((item) => !removed.has(item.row.client_id))); }} confirm={confirm} />}
-        {section === "notebook" && <Notebook items={mistakes} reload={loadMistakes} />}
-        {section === "insights" && <Insights data={insights} />}
+        {section === "notebook" && <Notebook items={mistakes} reload={loadMistakes} causeFilter={notebookCause} onCauseFilterChange={setNotebookCause} />}
+        {section === "insights" && <Insights data={insights} onSelectCause={(cause) => { setNotebookCause(cause); setSection("notebook"); }} />}
         {section === "settings" && <SettingsPanel config={config} />}
       </div>
       <DeepSeekConnectionDialog config={config} open={showConnection} checking={checkingConfig} onClose={() => setShowConnection(false)} onRefresh={() => void loadConfig()} />

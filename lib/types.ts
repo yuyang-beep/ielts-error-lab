@@ -54,6 +54,7 @@ export interface AnalysisDraft {
   question_type: string;
   primary_cause: string;
   secondary_causes: string[];
+  answer_comparison: string;
   evidence_span: string;
   trap_mechanism: string;
   diagnostic_question: string;
@@ -75,6 +76,7 @@ export interface PendingAnalysis {
 export interface MistakeRecord {
   id: string;
   attempt_id: string;
+  client_id: string;
   module: IELTSModule;
   source_label: string;
   question_text: string;
@@ -89,10 +91,12 @@ export interface MistakeRecord {
   question_type: string;
   primary_cause: string;
   secondary_causes: string[];
+  answer_comparison: string;
   evidence_span: string;
   trap_mechanism: string;
   diagnostic_question: string;
   confidence: number;
+  provenance: Array<"text_evidence" | "user_note" | "user_confirmation" | "ai_inference">;
   confirmed_at: string;
 }
 

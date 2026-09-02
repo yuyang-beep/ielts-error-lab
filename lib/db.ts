@@ -175,16 +175,45 @@ export async function listMistakes(
   const result = await db.prepare(sql).bind(...bindings).all<Record<string, unknown>>();
   return result.results.map((record) => {
     const analysis = parseJson<AnalysisDraft>(record.confirmed_json, {} as AnalysisDraft);
+    const fallbackComparison = `题干命题（含选项）：${String(record.question_text)}\n我的答案：${typeof record.user_answer === "string" ? record.user_answer : "未作答"}\n正确答案：${String(record.correct_answer)}\n答案差异：请结合当时作答过程补充判断`;
     return {
       id: String(record.id), attempt_id: String(record.attempt_id), module: record.module as "reading" | "listening",
       source_label: String(record.source_label), question_text: String(record.question_text),
       evidence_context: String(record.evidence_context), source_analysis: typeof record.source_analysis === "string" ? record.source_analysis : "", user_answer: typeof record.user_answer === "string" ? record.user_answer : null,
       correct_answer: String(record.correct_answer), attempted_on: typeof record.attempted_on === "string" ? record.attempted_on : null,
       source_note: String(record.source_note), source_tags: parseJson(record.source_tags_json, []),
-      source_url: typeof record.source_url === "string" ? record.source_url : null, ...analysis, confirmed_at: String(record.confirmed_at)
+      source_url: typeof record.source_url === "string" ? record.source_url : null, ...analysis,
+      client_id: analysis.client_id || String(record.id),
+      answer_comparison: analysis.answer_comparison || fallbackComparison,
+      confirmed_at: String(record.confirmed_at)
     };
   }).filter((item) =>
     (!filters.question_type || item.question_type === filters.question_type) &&
     (!filters.cause || item.primary_cause === filters.cause || item.secondary_causes.includes(filters.cause))
   );
+}
+
+export async function updateMistake(db: D1Database, id: string, draft: AnalysisDraft): Promise<boolean> {
+  await ensureSchema(db);
+  const now = new Date().toISOString();
+  const result = await db.prepare(`UPDATE analyses
+    SET confirmed_json = ?, confidence = ?, confirmed_at = ?
+    WHERE id = ? AND status = 'confirmed'`)
+    .bind(JSON.stringify(draft), draft.confidence, now, id).run();
+  return result.meta.changes > 0;
+}
+
+export async function deleteMistake(db: D1Database, id: string): Promise<boolean> {
+  await ensureSchema(db);
+  const record = await db.prepare(`SELECT a.attempt_id, at.import_row_id, at.question_id
+    FROM analyses a JOIN attempts at ON at.id = a.attempt_id WHERE a.id = ?`).bind(id).first<{ attempt_id: string; import_row_id: string; question_id: string }>();
+  if (!record) return false;
+  await db.batch([
+    db.prepare("DELETE FROM analyses WHERE id = ?").bind(id),
+    db.prepare("DELETE FROM attempts WHERE id = ?").bind(record.attempt_id),
+    db.prepare("DELETE FROM import_rows WHERE id = ?").bind(record.import_row_id),
+    db.prepare(`DELETE FROM questions WHERE id = ? AND NOT EXISTS (SELECT 1 FROM attempts WHERE question_id = ?)`)
+      .bind(record.question_id, record.question_id)
+  ]);
+  return true;
 }

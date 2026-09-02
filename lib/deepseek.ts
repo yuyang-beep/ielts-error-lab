@@ -48,6 +48,7 @@ function manualDraft(row: NormalizedMistake, error: string): AnalysisDraft {
     question_type: questionType,
     primary_cause: "U_UNCONFIRMED",
     secondary_causes: [],
+    answer_comparison: `题干命题（含选项）：${row.question_text.slice(0, 1_200)}\n我的答案：${row.user_answer ?? "未作答"}\n正确答案：${row.correct_answer}\n答案差异：${row.user_answer == null ? "未填写，无法从作答本身判断错因" : "待结合证据与作答过程确认"}`,
     evidence_span: isMeaningfulEvidence(row.source_analysis) ? row.source_analysis : row.evidence_context.slice(0, 1_200),
     trap_mechanism: trapMechanism,
     diagnostic_question: `回想作答过程，最接近哪一种：${candidateLabels || "没有定位、没有理解或执行失误"}？请选一项并补充当时卡住的具体步骤。`,
@@ -65,6 +66,7 @@ function buildInstructions(): string {
 1. 用中文输出且只输出符合 JSON Schema 的对象。题型和根因只能使用给定代码。
 2. 自动判定 question_type：以模块、题目要求和题面结构为准，question_type_hint 只作参考；证据足够时不得偷懒选择 OTHER。
 3. 比较题干、爱听写原文/解析、用户答案和正确答案，准确说明答案陷阱。
+   answer_comparison 必须明确分成四行：题干命题、我的答案、正确答案、答案差异。题干命题只引用题干/选项，不得把填写答案或正确答案混入题干；答案差异只比较两者，不把答案当作证据原文。
 4. 诊断一个主要根因和最多两个次要根因。题型常见错因只是候选，不是证据。
 5. 文本可支持知识、理解、题型策略和客观作答执行原因；状态行为 B_* 只能由有语义的用户笔记或标签明确支持。纯数字编号不是用户证据。
 6. 未作答且没有有效用户笔记时，primary_cause 必须为 U_UNCONFIRMED，secondary_causes 留空。
