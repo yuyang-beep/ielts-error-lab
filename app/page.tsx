@@ -47,6 +47,7 @@ export default function Home() {
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null);
+  const [personalKey, setPersonalKey] = useState(() => typeof window === "undefined" ? "" : sessionStorage.getItem("ielts-error-lab:deepseek-key") || "");
 
   const localUserKey = authStatus?.email || "anonymous";
 
@@ -99,7 +100,7 @@ export default function Home() {
     setBusy("analyze"); setMessage(null);
     try {
       const { drafts } = await api<{ drafts: AnalysisDraft[] }>("/api/analyze", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rows })
+        method: "POST", headers: { "Content-Type": "application/json", ...(personalKey ? { "X-DeepSeek-Api-Key": personalKey } : {}) }, body: JSON.stringify({ rows })
       });
       const rowMap = new Map(rows.map((row) => [row.client_id, row]));
       const additions = drafts.flatMap((draft) => {
@@ -160,7 +161,7 @@ export default function Home() {
         {section === "insights" && <Insights data={insights} onSelectCause={(cause) => { setNotebookCause(cause); setSection("notebook"); }} />}
         {section === "settings" && <SettingsPanel config={config} />}
       </div>
-      <DeepSeekConnectionDialog config={config} open={showConnection} checking={checkingConfig} onClose={() => setShowConnection(false)} onRefresh={() => void loadConfig()} />
+      <DeepSeekConnectionDialog config={config} personalKey={personalKey} open={showConnection} checking={checkingConfig} onClose={() => setShowConnection(false)} onRefresh={() => void loadConfig()} onSavePersonalKey={(key) => { setPersonalKey(key); if (key) sessionStorage.setItem("ielts-error-lab:deepseek-key", key); else sessionStorage.removeItem("ielts-error-lab:deepseek-key"); setMessage({ tone: "ok", text: key ? "个人 Key 已保存到本次浏览器会话" : "个人 Key 已清除" }); }} />
     </main>
   </div>;
 }
