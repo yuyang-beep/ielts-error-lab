@@ -1,6 +1,8 @@
 import { ChevronRight, Cloud, Download, NotebookTabs, Pencil, RefreshCw, Search, Save, Trash2, Upload, X } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { deleteLocalMistake, importLocalMistakes, updateLocalMistake } from "@/lib/local-store";
+import { isMultipleChoiceType } from "@/lib/answer-comparison";
+import { MultipleAnswerStatus } from "./multiple-answer-status";
 import { CAUSES, TAXONOMY_VERSION, causeLabel, questionTypeLabel } from "@/lib/taxonomy";
 import type { AnalysisDraft, MistakeRecord } from "@/lib/types";
 import { Badge, Empty, Intro } from "./ui";
@@ -91,7 +93,7 @@ export function Notebook({ items, reload, userKey, causeFilter = "", onCauseFilt
         return <article className="card pad mistake" key={item.id}>
           <div className="badge-line"><Badge tone={item.module === "reading" ? "green" : "orange"}>{item.module === "reading" ? "阅读" : "听力"}</Badge><Badge>{questionTypeLabel(item.question_type)}</Badge><div className="mistake-actions"><button className="ghost small" disabled={busyId === item.id} onClick={() => startEdit(item)}><Pencil />修改</button><button className="danger small" disabled={busyId === item.id} onClick={() => void remove(item)}><Trash2 />删除</button></div></div>
           <small>{item.source_label} · {item.attempted_on ?? "日期待确认"}</small><h3>{item.question_text}</h3>
-          <div className="answers"><span>你的答案<strong>{item.user_answer ?? "未作答"}</strong></span><ChevronRight /><span>正确答案<strong>{item.correct_answer}</strong></span></div>
+          <div className="answers"><span>你的答案<strong>{item.user_answer ?? "未作答"}</strong></span><ChevronRight /><span>正确答案<strong>{item.correct_answer}</strong></span></div>{isMultipleChoiceType(item.question_type) && <MultipleAnswerStatus userAnswer={item.user_answer} correctAnswer={item.correct_answer} />}
           {isEditing ? <div className="edit-fields">
             <label><span>主要错因</span><select value={editDraft.primary_cause} onChange={(e) => setEditDraft({ ...editDraft, primary_cause: e.target.value, secondary_causes: editDraft.secondary_causes.filter((code) => code !== e.target.value) })}>{Object.entries(CAUSES).map(([code, label]) => <option value={code} key={code}>{code} · {label}</option>)}</select></label>
             {[0, 1].map((slot) => <label key={slot}><span>次要错因 {slot + 1}</span><select value={editDraft.secondary_causes[slot] ?? ""} onChange={(e) => { const next = [...editDraft.secondary_causes]; if (e.target.value) next[slot] = e.target.value; else next.splice(slot, 1); setEditDraft({ ...editDraft, secondary_causes: [...new Set(next.filter((code) => code && code !== editDraft.primary_cause))].slice(0, 2) }); }}><option value="">不设置</option>{Object.entries(CAUSES).filter(([code]) => code !== editDraft.primary_cause).map(([code, label]) => <option value={code} key={code}>{code} · {label}</option>)}</select></label>)}

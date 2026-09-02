@@ -1,6 +1,8 @@
 import { BookOpenCheck, Check, CircleAlert, LoaderCircle, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { CAUSES, TAXONOMY_VERSION, questionTypeLabel } from "@/lib/taxonomy";
+import { isMultipleChoiceType } from "@/lib/answer-comparison";
+import { MultipleAnswerStatus } from "./multiple-answer-status";
 import { getCauseCandidates, isMeaningfulEvidence } from "@/lib/cause-guidance";
 import type { AnalysisDraft, PendingAnalysis } from "@/lib/types";
 import { Badge, Empty, Intro } from "./ui";
@@ -23,7 +25,7 @@ export function ReviewQueue({ items, busy, updateDraft, remove, confirm }: {
       <div className="review-batch card"><div><input aria-label="选择全部待确认草稿" type="checkbox" checked={allSelected} onChange={() => setSelected(allSelected ? new Set() : new Set(availableIds))} /><span>批量管理</span><strong>已选 {selectedIds.length} / {items.length}</strong></div><div><button className="ghost" onClick={() => setSelected(new Set(availableIds))}>全选</button><button className="ghost" disabled={!selectedIds.length} onClick={() => setSelected(new Set())}>清空选择</button><button className="danger" disabled={!selectedIds.length} onClick={() => { remove(selectedIds); setSelected(new Set()); }}><Trash2 />删除选中草稿</button></div></div>
       <div className="review-list">{items.map((item, index) => <article className={selected.has(item.row.client_id) ? "card pad review selected" : "card pad review"} key={item.row.client_id}>
         <div className="review-title"><div className="review-number"><b>{String(index + 1).padStart(2, "0")}</b><input aria-label={`选择草稿 ${index + 1}`} type="checkbox" checked={selected.has(item.row.client_id)} onChange={() => setSelected((current) => { const next = new Set(current); if (next.has(item.row.client_id)) next.delete(item.row.client_id); else next.add(item.row.client_id); return next; })} /></div><div><div className="badge-line"><Badge tone="green">{item.row.module === "reading" ? "阅读" : "听力"}</Badge><Badge>{item.row.source_label}</Badge>{item.row.answer_state === "unanswered" && <Badge tone="orange">未作答</Badge>}</div><h3>{item.row.question_text}</h3></div></div>
-        <div className="evidence"><span>原文证据</span><p>{item.row.evidence_context || "导出数据未提供原文证据。"}</p><div>我的答案 <strong>{item.row.user_answer ?? "未作答"}</strong> · 正确答案 <strong>{item.row.correct_answer}</strong></div></div>
+        <div className="evidence"><span>原文证据</span><p>{item.row.evidence_context || "导出数据未提供原文证据。"}</p><div>我的答案 <strong>{item.row.user_answer ?? "未作答"}</strong> · 正确答案 <strong>{item.row.correct_answer}</strong></div></div>{isMultipleChoiceType(item.draft.question_type) && <MultipleAnswerStatus userAnswer={item.row.user_answer} correctAnswer={item.row.correct_answer} />}
         <div className="answer-comparison"><span>题干与答案对照（AI 自动整理）</span><p>{item.draft.answer_comparison}</p></div>
         {isMeaningfulEvidence(item.row.source_analysis) && <div className="source-analysis"><span>爱听写解析</span><p>{item.row.source_analysis}</p></div>}
         {(isMeaningfulEvidence(item.row.source_note) || item.row.source_tags.some(isMeaningfulEvidence)) && <div className="learner-evidence"><strong>你的笔记证据</strong><span>{[item.row.source_note, ...item.row.source_tags].filter(isMeaningfulEvidence).join(" · ")}</span></div>}
