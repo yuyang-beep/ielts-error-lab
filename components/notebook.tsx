@@ -26,6 +26,11 @@ function draftFromItem(item: MistakeRecord): AnalysisDraft {
   };
 }
 
+export function matchesCauseFilter(item: MistakeRecord, causeFilter: string): boolean {
+  if (!causeFilter) return true;
+  return item.primary_cause === causeFilter || item.secondary_causes.includes(causeFilter);
+}
+
 export function Notebook({ items, reload, causeFilter = "", onCauseFilterChange }: {
   items: MistakeRecord[];
   reload: () => Promise<void>;
@@ -41,7 +46,7 @@ export function Notebook({ items, reload, causeFilter = "", onCauseFilterChange 
   const visible = useMemo(() => items.filter((item) =>
     (!search || `${item.source_label} ${item.question_text}`.toLowerCase().includes(search.toLowerCase())) &&
     (!module || item.module === module) &&
-    (!causeFilter || item.primary_cause === causeFilter || item.secondary_causes.includes(causeFilter))
+    matchesCauseFilter(item, causeFilter)
   ), [items, search, module, causeFilter]);
 
   function startEdit(item: MistakeRecord) {
@@ -69,7 +74,7 @@ export function Notebook({ items, reload, causeFilter = "", onCauseFilterChange 
   return <section>
     <Intro kicker="MISTAKE NOTEBOOK" title="不是答案仓库，而是可检索的决策记录。" body="同一道题再次出现会保留新的作答，便于观察错误是否真正消失。" action={<button className="ghost" onClick={() => void reload()}><RefreshCw />刷新</button>} />
     {error && <div className="warning">{error}</div>}
-    <div className="card filters"><Search /><input placeholder="搜索题目或剑雅来源…" value={search} onChange={(e) => setSearch(e.target.value)} /><select value={module} onChange={(e) => setModule(e.target.value)}><option value="">全部模块</option><option value="reading">阅读</option><option value="listening">听力</option></select><select value={causeFilter} onChange={(e) => onCauseFilterChange?.(e.target.value)}><option value="">全部根因</option>{Object.entries(CAUSES).map(([code, label]) => <option value={code} key={code}>{label}</option>)}</select></div>
+    <div className="card filters"><Search /><input placeholder="搜索题目或剑雅来源…" value={search} onChange={(e) => setSearch(e.target.value)} /><select value={module} onChange={(e) => setModule(e.target.value)}><option value="">全部模块</option><option value="reading">阅读</option><option value="listening">听力</option></select><select aria-label="按根因筛选" value={causeFilter} onChange={(e) => onCauseFilterChange?.(e.target.value)}><option value="">全部根因</option>{Object.entries(CAUSES).map(([code, label]) => <option value={code} key={code}>{label}</option>)}</select>{causeFilter && <div className="filter-summary">当前根因：<strong>{causeLabel(causeFilter)}</strong> · 仅显示 {visible.length} 题<button type="button" className="ghost small" onClick={() => onCauseFilterChange?.("")}>清除筛选</button></div>}</div>
     {!visible.length ? <Empty icon={NotebookTabs} title="没有匹配的错题" body="确认第一条分析后，这里会保留题目、作答、证据与训练规则。" /> :
       <div className="mistake-grid">{visible.map((item) => {
         const isEditing = editingId === item.id && editDraft;
