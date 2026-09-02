@@ -1,10 +1,13 @@
 import { confirmAnalyses } from "@/lib/db";
 import { runtimeEnv } from "@/lib/runtime";
 import { confirmRequestSchema } from "@/lib/schemas";
+import { requireAuthenticatedSiteUser } from "@/lib/site-auth";
 
 export const runtime = "edge";
 
 export async function POST(request: Request) {
+  const authError = requireAuthenticatedSiteUser(request);
+  if (authError) return authError;
   const parsed = confirmRequestSchema.safeParse(await request.json());
   if (!parsed.success) return Response.json({ error: "确认数据不完整", details: parsed.error.flatten() }, { status: 400 });
   const config = runtimeEnv();

@@ -1,6 +1,7 @@
 import { listMistakes } from "@/lib/db";
 import { runtimeEnv } from "@/lib/runtime";
 import type { InsightData } from "@/lib/types";
+import { requireAuthenticatedSiteUser } from "@/lib/site-auth";
 
 export const runtime = "edge";
 
@@ -10,7 +11,9 @@ function counts(values: string[]) {
   return [...map.entries()].map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count);
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const authError = requireAuthenticatedSiteUser(request);
+  if (authError) return authError;
   const config = runtimeEnv();
   if (!config.DB) return Response.json({ error: "D1 数据库未配置" }, { status: 503 });
   const items = await listMistakes(config.DB, {});

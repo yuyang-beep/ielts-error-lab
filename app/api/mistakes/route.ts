@@ -1,9 +1,12 @@
 import { listMistakes } from "@/lib/db";
 import { runtimeEnv } from "@/lib/runtime";
+import { requireAuthenticatedSiteUser } from "@/lib/site-auth";
 
 export const runtime = "edge";
 
 export async function GET(request: Request) {
+  const authError = requireAuthenticatedSiteUser(request);
+  if (authError) return authError;
   const config = runtimeEnv();
   if (!config.DB) return Response.json({ error: "D1 数据库未配置" }, { status: 503 });
   const params = new URL(request.url).searchParams;
