@@ -1,17 +1,17 @@
 "use client";
 
-import { BrainCircuit, BookOpenCheck, LayoutDashboard, NotebookTabs, Settings, ShieldCheck, UploadCloud } from "lucide-react";
+import { BrainCircuit, BookOpenCheck, KeyRound, LayoutDashboard, NotebookTabs, Settings, ShieldCheck, UploadCloud } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ImportCenter } from "@/components/import-center";
 import { ReviewQueue } from "@/components/review-queue";
 import { Notebook } from "@/components/notebook";
 import { Insights } from "@/components/insights";
 import { SettingsPanel } from "@/components/settings-panel";
+import { DeepSeekConnectionDialog, type DeepSeekConfigStatus } from "@/components/deepseek-connection-dialog";
 import type { AnalysisDraft, ImportReport, InsightData, IELTSModule, MistakeRecord, PendingAnalysis } from "@/lib/types";
 import { parseWorkbook } from "@/lib/xlsx-parser";
 
 type Section = "import" | "review" | "notebook" | "insights" | "settings";
-type ConfigStatus = { deepseek_configured: boolean; model: string; taxonomy_version: string; database_configured: boolean };
 
 const nav = [
   { id: "import" as const, label: "导入中心", icon: UploadCloud },
@@ -36,14 +36,19 @@ export default function Home() {
   const [report, setReport] = useState<ImportReport | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pending, setPending] = useState<PendingAnalysis[]>([]);
-  const [config, setConfig] = useState<ConfigStatus | null>(null);
+  const [config, setConfig] = useState<DeepSeekConfigStatus | null>(null);
+  const [showConnection, setShowConnection] = useState(false);
+  const [checkingConfig, setCheckingConfig] = useState(true);
   const [mistakes, setMistakes] = useState<MistakeRecord[]>([]);
   const [insights, setInsights] = useState<InsightData | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
 
   const loadConfig = useCallback(async () => {
-    try { setConfig(await api<ConfigStatus>("/api/config/status")); } catch { /* non-blocking */ }
+    setCheckingConfig(true);
+    try { setConfig(await api<DeepSeekConfigStatus>("/api/config/status")); }
+    catch { setConfig(null); }
+    finally { setCheckingConfig(false); setShowConnection(true); }
   }, []);
   const loadMistakes = useCallback(async () => {
     try { setMistakes((await api<{ items: MistakeRecord[] }>("/api/mistakes")).items); }
@@ -96,7 +101,14 @@ export default function Home() {
       setMessage({ tone: "ok", text: `已生成 ${additions.length} 条草稿，请核对后入库` });
       setSection("review");
     } catch (error) {
-      setMessage({ tone: "error", text: error instanceof Error ? error.message : "分析失败" });
+      const text = error instanceof Error ? error.message : "分析失败";
+      if (text.includes("DEEPSEEK_API_KEY")) {
+        setMessage(null);
+        setShowConnection(true);
+        void loadConfig();
+      } else {
+        setMessage({ tone: "error", text });
+      }
     } finally { setBusy(null); }
   }
 
@@ -129,7 +141,7 @@ export default function Home() {
       <div className="sidebar-note"><ShieldCheck /><div><strong>浏览器内解析</strong><span>XLSX 原文件不会上传</span></div></div>
     </aside>
     <main>
-      <header className="topbar"><div><span>PERSONAL LEARNING SYSTEM</span><h1>{nav.find((item) => item.id === section)?.label}</h1></div><div className="api-state"><i className={config?.deepseek_configured ? "online" : ""} />DeepSeek {config?.deepseek_configured ? "已连接" : "待配置"}</div></header>
+      <header className="topbar"><div><span>PERSONAL LEARNING SYSTEM</span><h1>{nav.find((item) => item.id === section)?.label}</h1></div><button className={config?.deepseek_configured ? "connect-button connected" : "connect-button"} onClick={() => setShowConnection(true)}><KeyRound /><i />{config?.deepseek_configured ? "DeepSeek 已接入" : "接入 DeepSeek"}</button></header>
       {message && <div className={`toast ${message.tone}`}><span>{message.text}</span><button onClick={() => setMessage(null)}>×</button></div>}
       <div className="content">
         {section === "import" && <ImportCenter {...{ file, moduleChoice, sourceUrl, report, selected, busy }} setSourceUrl={setSourceUrl} setModuleChoice={setModuleChoice} setSelected={setSelected} readFile={readFile} analyze={analyze} />}
@@ -138,6 +150,7 @@ export default function Home() {
         {section === "insights" && <Insights data={insights} />}
         {section === "settings" && <SettingsPanel config={config} />}
       </div>
+      <DeepSeekConnectionDialog config={config} open={showConnection} checking={checkingConfig} onClose={() => setShowConnection(false)} onRefresh={() => void loadConfig()} />
     </main>
   </div>;
 }
