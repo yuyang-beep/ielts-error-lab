@@ -1,10 +1,11 @@
 "use client";
 
-import { BrainCircuit, BookOpenCheck, KeyRound, LayoutDashboard, NotebookTabs, Settings, ShieldCheck, UploadCloud } from "lucide-react";
+import { BrainCircuit, BookOpenCheck, BookText, KeyRound, LayoutDashboard, NotebookTabs, Settings, ShieldCheck, UploadCloud } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ImportCenter } from "@/components/import-center";
 import { ReviewQueue } from "@/components/review-queue";
 import { Notebook } from "@/components/notebook";
+import { VocabularyBook } from "@/components/vocabulary-book";
 import { Insights } from "@/components/insights";
 import { SettingsPanel } from "@/components/settings-panel";
 import { DeepSeekConnectionDialog, type DeepSeekConfigStatus } from "@/components/deepseek-connection-dialog";
@@ -13,12 +14,13 @@ import { confirmLocalMistakes, importLocalMistakes, loadLocalMistakes } from "@/
 import type { AnalysisDraft, AuthStatus, ImportReport, InsightData, IELTSModule, MistakeRecord, PendingAnalysis } from "@/lib/types";
 import { parseWorkbook } from "@/lib/xlsx-parser";
 
-type Section = "import" | "review" | "notebook" | "insights" | "settings";
+type Section = "import" | "review" | "notebook" | "vocabulary" | "insights" | "settings";
 
 const nav = [
   { id: "import" as const, label: "导入中心", icon: UploadCloud },
   { id: "review" as const, label: "待确认分析", icon: BookOpenCheck },
   { id: "notebook" as const, label: "错题本", icon: NotebookTabs },
+  { id: "vocabulary" as const, label: "生词本", icon: BookText },
   { id: "insights" as const, label: "洞察面板", icon: LayoutDashboard },
   { id: "settings" as const, label: "设置", icon: Settings }
 ];
@@ -75,7 +77,7 @@ export default function Home() {
   useEffect(() => { queueMicrotask(() => void loadAuth()); }, [loadAuth]);
   useEffect(() => {
     queueMicrotask(() => {
-      if (section === "notebook") void loadMistakes();
+      if (section === "notebook" || section === "vocabulary") void loadMistakes();
       if (section === "insights") void loadInsights();
     });
   }, [section, loadMistakes, loadInsights]);
@@ -174,6 +176,7 @@ export default function Home() {
         {section === "import" && <ImportCenter {...{ file, moduleChoice, sourceUrl, report, selected, busy }} setSourceUrl={setSourceUrl} setModuleChoice={setModuleChoice} setSelected={setSelected} readFile={readFile} analyze={analyze} />}
         {section === "review" && <ReviewQueue items={pending} busy={busy} updateDraft={updateDraft} remove={(ids) => { const removed = new Set(ids); setPending((items) => items.filter((item) => !removed.has(item.row.client_id))); }} confirm={confirm} />}
         {section === "notebook" && <Notebook items={mistakes} reload={loadMistakes} userKey={localUserKey} causeFilter={notebookCause} onCauseFilterChange={setNotebookCause} restoreCloud={restoreCloudMistakes} restoringCloud={busy === "restore"} />}
+        {section === "vocabulary" && <VocabularyBook items={mistakes} />}
         {section === "insights" && <Insights data={insights} onSelectCause={(cause) => { setNotebookCause(cause); setSection("notebook"); }} />}
         {section === "settings" && <SettingsPanel config={config} />}
       </div>

@@ -1,6 +1,11 @@
 export type IELTSModule = "reading" | "listening";
 export type AnswerState = "answered" | "unanswered";
 
+export interface VocabularyEntry {
+  word: string;
+  translation: string;
+}
+
 export interface SourceParts {
   book?: string;
   test?: number;
@@ -60,6 +65,7 @@ export interface AnalysisDraft {
   diagnostic_question: string;
   confidence: number;
   provenance: Array<"text_evidence" | "user_note" | "user_confirmation" | "ai_inference">;
+  vocabulary?: VocabularyEntry[];
   status?: "draft" | "manual_required";
   error?: string;
 }
@@ -98,6 +104,7 @@ export interface MistakeRecord {
   diagnostic_question: string;
   confidence: number;
   provenance: Array<"text_evidence" | "user_note" | "user_confirmation" | "ai_inference">;
+  vocabulary?: VocabularyEntry[];
   confirmed_at: string;
 }
 

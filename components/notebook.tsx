@@ -1,4 +1,4 @@
-import { ChevronRight, Cloud, Download, NotebookTabs, Pencil, RefreshCw, Search, Save, Trash2, Upload, X } from "lucide-react";
+import { ChevronRight, Cloud, Download, NotebookTabs, Pencil, Plus, RefreshCw, Search, Save, Trash2, Upload, X } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { deleteLocalMistake, importLocalMistakes, updateLocalMistake } from "@/lib/local-store";
 import { isMultipleChoiceType } from "@/lib/answer-comparison";
@@ -18,7 +18,8 @@ function draftFromItem(item: MistakeRecord): AnalysisDraft {
     trap_mechanism: item.trap_mechanism,
     diagnostic_question: item.diagnostic_question,
     confidence: item.confidence,
-    provenance: item.provenance ?? ["user_confirmation"]
+    provenance: item.provenance ?? ["user_confirmation"],
+    vocabulary: item.vocabulary ?? []
   };
 }
 
@@ -99,11 +100,13 @@ export function Notebook({ items, reload, userKey, causeFilter = "", onCauseFilt
             {[0, 1].map((slot) => <label key={slot}><span>次要错因 {slot + 1}</span><select value={editDraft.secondary_causes[slot] ?? ""} onChange={(e) => { const next = [...editDraft.secondary_causes]; if (e.target.value) next[slot] = e.target.value; else next.splice(slot, 1); setEditDraft({ ...editDraft, secondary_causes: [...new Set(next.filter((code) => code && code !== editDraft.primary_cause))].slice(0, 2) }); }}><option value="">不设置</option>{Object.entries(CAUSES).filter(([code]) => code !== editDraft.primary_cause).map(([code, label]) => <option value={code} key={code}>{code} · {label}</option>)}</select></label>)}
             <label className="wide"><span>关键证据</span><textarea value={editDraft.evidence_span} onChange={(e) => setEditDraft({ ...editDraft, evidence_span: e.target.value })} /></label>
             <label className="wide"><span>陷阱机制</span><textarea value={editDraft.trap_mechanism} onChange={(e) => setEditDraft({ ...editDraft, trap_mechanism: e.target.value })} /></label>
+            <label className="wide"><span>生词及中文释义 <em>可选</em></span><div className="vocabulary-editor">{(editDraft.vocabulary ?? []).map((entry, index) => <div className="vocabulary-row" key={index}><input aria-label={`生词 ${index + 1}`} placeholder="英文生词" value={entry.word} onChange={(e) => { const vocabulary = [...(editDraft.vocabulary ?? [])]; vocabulary[index] = { ...entry, word: e.target.value }; setEditDraft({ ...editDraft, vocabulary }); }} /><input aria-label={`生词 ${index + 1} 中文释义`} placeholder="中文释义" value={entry.translation} onChange={(e) => { const vocabulary = [...(editDraft.vocabulary ?? [])]; vocabulary[index] = { ...entry, translation: e.target.value }; setEditDraft({ ...editDraft, vocabulary }); }} /><button type="button" className="ghost small" aria-label={`删除生词 ${index + 1}`} onClick={() => setEditDraft({ ...editDraft, vocabulary: (editDraft.vocabulary ?? []).filter((_, itemIndex) => itemIndex !== index) })}><X /></button></div>)}<button type="button" className="ghost small" onClick={() => setEditDraft({ ...editDraft, vocabulary: [...(editDraft.vocabulary ?? []), { word: "", translation: "" }] })}><Plus />添加生词</button></div></label>
             <div className="edit-actions"><button className="ghost" onClick={() => { setEditingId(null); setEditDraft(null); }}><X />取消</button><button className="primary" disabled={busyId === item.id || !editDraft.trap_mechanism.trim()} onClick={() => void saveEdit()}><Save />保存修改</button></div>
           </div> : <>
             <div className="cause"><span>主要错因</span><strong>{causeLabel(item.primary_cause)}</strong><code>{item.primary_cause}</code></div>
             <div className="all-causes"><span>全部错因</span><div><Badge tone="orange">主要 · {causeLabel(item.primary_cause)}</Badge>{item.secondary_causes.map((code) => <Badge key={code}>次要 · {causeLabel(code)}</Badge>)}</div></div>
             {item.trap_mechanism && <div className="trap-note"><span>陷阱机制</span><p>{item.trap_mechanism}</p></div>}
+            <div className="vocabulary-note"><span>生词</span>{item.vocabulary?.some((entry) => entry.word.trim() && entry.translation.trim()) ? <div className="vocabulary-list">{item.vocabulary.filter((entry) => entry.word.trim() && entry.translation.trim()).map((entry, index) => <span className="vocabulary-item" key={index}><strong>{entry.word}</strong><em>{entry.translation}</em></span>)}</div> : <p>尚未记录生词，可点击“修改”补充。</p>}</div>
           </>}
         </article>;
       })}</div>}

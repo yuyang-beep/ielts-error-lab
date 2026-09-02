@@ -34,7 +34,8 @@ export const analysisDraftSchema = z.object({
   trap_mechanism: z.string().min(1).max(5_000),
   diagnostic_question: z.string().min(1).max(2_000),
   confidence: z.number().min(0).max(1),
-  provenance: z.array(z.enum(["text_evidence", "user_note", "user_confirmation", "ai_inference"])).min(1)
+  provenance: z.array(z.enum(["text_evidence", "user_note", "user_confirmation", "ai_inference"])).min(1),
+  vocabulary: z.array(z.object({ word: z.string().min(1).max(200), translation: z.string().min(1).max(500) })).max(100).optional()
 });
 
 export const analyzeRequestSchema = z.object({

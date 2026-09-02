@@ -1,4 +1,4 @@
-import type { AnalysisDraft, MistakeRecord, PendingAnalysis } from "./types";
+import type { AnalysisDraft, MistakeRecord, PendingAnalysis, VocabularyEntry } from "./types";
 
 const DB_NAME = "ielts-error-lab-local";
 const STORE_NAME = "mistakes";
@@ -46,6 +46,7 @@ function toRecord(item: PendingAnalysis): MistakeRecord {
     diagnostic_question: item.draft.diagnostic_question,
     confidence: item.draft.confidence,
     provenance: ["user_confirmation"],
+    vocabulary: item.draft.vocabulary ?? [],
     confirmed_at: new Date().toISOString()
   };
 }
@@ -59,7 +60,7 @@ export async function loadLocalMistakes(user: string): Promise<MistakeRecord[]> 
       const records = (request.result as StoredMistake[]).filter((item) => item.owner_key === ownerKey(user)).map((item) => {
         const record = { ...item } as Partial<StoredMistake>;
         delete record.owner_key; delete record.storage_key;
-        return record as MistakeRecord;
+        return { ...record, vocabulary: Array.isArray(record.vocabulary) ? record.vocabulary as VocabularyEntry[] : [] } as MistakeRecord;
       });
       db.close(); resolve(records);
     };
