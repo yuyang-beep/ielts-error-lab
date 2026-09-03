@@ -1,4 +1,4 @@
-import type { AnalysisDraft, MistakeRecord, NormalizedMistake } from "./types";
+import type { AnalysisDraft, MistakeRecord, NormalizedMistake, VocabularyEntry } from "./types";
 import { PROMPT_VERSION, TAXONOMY_VERSION } from "./taxonomy";
 
 const schemaStatements = [
@@ -100,6 +100,7 @@ export async function confirmAnalyses(
   const statements: D1PreparedStatement[] = [];
   let inserted = 0;
   let skipped = 0;
+  const normalizeVocabulary = (entries: VocabularyEntry[] | undefined): VocabularyEntry[] => (entries ?? []).map((entry) => ({ word: entry.word.trim(), translation: entry.translation.trim() })).filter((entry) => entry.word && entry.translation);
   for (const item of items) {
     const suffix = item.force_new_attempt ? crypto.randomUUID().replaceAll("-", "") : item.row.row_fingerprint.slice(0, 32);
     const batchId = item.force_new_attempt
@@ -114,7 +115,7 @@ export async function confirmAnalyses(
       if (existing) { skipped += 1; continue; }
     }
     const userEvidence = item.draft.user_evidence!.trim();
-    const confirmedDraft: AnalysisDraft = { ...item.draft, evidence_span: userEvidence, trap_mechanism: userEvidence };
+    const confirmedDraft: AnalysisDraft = { ...item.draft, evidence_span: userEvidence, trap_mechanism: userEvidence, vocabulary: normalizeVocabulary(item.draft.vocabulary) };
     statements.push(
       db.prepare(`INSERT OR IGNORE INTO import_batches
         (id,file_hash,file_name,module,source_url,imported_at,stats_json) VALUES (?,?,?,?,?,?,?)`)

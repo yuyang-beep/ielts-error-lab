@@ -1,4 +1,4 @@
-import { BookOpenCheck, Check, CircleAlert, LoaderCircle, Trash2 } from "lucide-react";
+import { BookOpenCheck, Check, CircleAlert, LoaderCircle, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { CAUSES, TAXONOMY_VERSION, questionTypeLabel } from "@/lib/taxonomy";
 import { isMultipleChoiceType } from "@/lib/answer-comparison";
@@ -20,6 +20,20 @@ export function ReviewQueue({ items, busy, updateDraft, remove, confirm }: {
   const allSelected = items.length > 0 && selectedIds.length === items.length;
   const [validationError, setValidationError] = useState<string | null>(null);
   const [missingEvidenceIds, setMissingEvidenceIds] = useState<Set<string>>(new Set());
+
+  function updateVocabulary(clientId: string, index: number, patch: Partial<{ word: string; translation: string }>) {
+    const item = items.find((entry) => entry.row.client_id === clientId);
+    if (!item) return;
+    const vocabulary = [...(item.draft.vocabulary ?? [])];
+    vocabulary[index] = { ...vocabulary[index], ...patch };
+    updateDraft(clientId, { vocabulary });
+  }
+
+  function addVocabulary(clientId: string) {
+    const item = items.find((entry) => entry.row.client_id === clientId);
+    if (!item) return;
+    updateDraft(clientId, { vocabulary: [...(item.draft.vocabulary ?? []), { word: "", translation: "" }] });
+  }
 
   async function confirmWithValidation(targets: PendingAnalysis[]) {
     const missing = targets.filter((item) => !item.draft.user_evidence?.trim());
@@ -59,6 +73,7 @@ export function ReviewQueue({ items, busy, updateDraft, remove, confirm }: {
             return <article className={primary || secondary ? "cause-candidate selected" : "cause-candidate"} key={candidate.code}><header><strong>{candidate.label}</strong><code>{candidate.code}</code></header><p>{candidate.checkpoint}</p><footer><button type="button" className={primary ? "active" : ""} onClick={() => updateDraft(item.row.client_id, { primary_cause: candidate.code, secondary_causes: item.draft.secondary_causes.filter((code) => code !== candidate.code) })}>{primary ? "已设为主要" : "设为主要"}</button><button type="button" className={secondary ? "active" : ""} disabled={!secondary && item.draft.secondary_causes.length >= 2} onClick={() => updateDraft(item.row.client_id, { secondary_causes: secondary ? item.draft.secondary_causes.filter((code) => code !== candidate.code) : [...item.draft.secondary_causes.filter((code) => code !== candidate.code && code !== item.draft.primary_cause), candidate.code].slice(0, 2) })}>{secondary ? "移除次要" : "设为次要"}</button></footer></article>;
           })}</div></div>
           <label className={missingEvidenceIds.has(item.row.client_id) ? "wide required-field" : "wide"}><span>错因依据 <em>必填，由你填写</em></span><textarea value={item.draft.user_evidence ?? ""} placeholder="请写下支持你判断的原文证据、答案范围和具体陷阱；AI 不会替你填写。" onChange={(e) => { setMissingEvidenceIds((current) => { const next = new Set(current); next.delete(item.row.client_id); return next; }); setValidationError(null); updateDraft(item.row.client_id, { user_evidence: e.target.value, evidence_span: e.target.value, trap_mechanism: e.target.value }); }} />{missingEvidenceIds.has(item.row.client_id) && <small className="field-error">请填写错因依据后再提交</small>}</label>
+          <label className="wide"><span>生词及中文释义 <em>可选</em></span><div className="vocabulary-editor">{(item.draft.vocabulary ?? []).map((entry, vocabularyIndex) => <div className="vocabulary-row" key={vocabularyIndex}><input aria-label={`生词 ${vocabularyIndex + 1}`} placeholder="英文单词" value={entry.word} onChange={(e) => updateVocabulary(item.row.client_id, vocabularyIndex, { word: e.target.value })} /><input aria-label={`中文释义 ${vocabularyIndex + 1}`} placeholder="中文释义" value={entry.translation} onChange={(e) => updateVocabulary(item.row.client_id, vocabularyIndex, { translation: e.target.value })} /><button type="button" className="ghost small" aria-label={`删除生词 ${vocabularyIndex + 1}`} onClick={() => updateDraft(item.row.client_id, { vocabulary: (item.draft.vocabulary ?? []).filter((_, index) => index !== vocabularyIndex) })}><X /></button></div>)}<button type="button" className="ghost small" onClick={() => addVocabulary(item.row.client_id)}><Plus />添加生词</button></div></label>
           <div className="ai-question wide"><span>AI 诊断问题</span><p>{item.draft.diagnostic_question}</p></div>
         </div>
         <div className="review-foot"><span>AI 置信度 <strong>{Math.round(item.draft.confidence * 100)}%</strong> · 分类 v{TAXONOMY_VERSION}</span><div><button className="ghost" onClick={() => { remove([item.row.client_id]); setSelected((current) => { const next = new Set(current); next.delete(item.row.client_id); return next; }); }}>删除草稿</button><button className="primary small" disabled={busy === "confirm"} onClick={() => void confirmWithValidation([item])}><Check />确认这一条</button></div></div>

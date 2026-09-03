@@ -20,6 +20,10 @@ function openDatabase(): Promise<IDBDatabase> {
   });
 }
 
+function normalizeVocabulary(entries: VocabularyEntry[] | undefined): VocabularyEntry[] {
+  return (entries ?? []).map((entry) => ({ word: entry.word.trim(), translation: entry.translation.trim() })).filter((entry) => entry.word && entry.translation);
+}
+
 function toRecord(item: PendingAnalysis): MistakeRecord {
   const userEvidence = item.draft.user_evidence?.trim() || "";
   return {
@@ -47,7 +51,7 @@ function toRecord(item: PendingAnalysis): MistakeRecord {
     diagnostic_question: item.draft.diagnostic_question,
     confidence: item.draft.confidence,
     provenance: ["user_confirmation"],
-    vocabulary: item.draft.vocabulary ?? [],
+    vocabulary: normalizeVocabulary(item.draft.vocabulary),
     confirmed_at: new Date().toISOString()
   };
 }
