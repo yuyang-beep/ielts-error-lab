@@ -1,4 +1,5 @@
 import type { IELTSModule, NormalizedMistake, SourceParts } from "./types";
+import { QUESTION_TYPE_CODES } from "./taxonomy";
 
 export const REQUIRED_HEADERS = [
   "日期",
@@ -12,6 +13,7 @@ export const REQUIRED_HEADERS = [
 ] as const;
 
 export const SOURCE_ANALYSIS_HEADERS = ["解析", "题目解析", "答案解析", "官方解析", "错题解析"] as const;
+export const QUESTION_TYPE_HEADERS = ["题型", "题目类型", "题型名称", "Question Type", "question_type", "类型"] as const;
 
 export type RawRow = Record<string, unknown>;
 
@@ -111,22 +113,49 @@ export function parseSourceLabel(value: unknown): SourceParts {
   };
 }
 
-export function inferQuestionType(text: string, module: IELTSModule): string | null {
-  const value = text.toLowerCase();
+export function normalizeQuestionTypeHint(value: unknown, module: IELTSModule): string | null {
+  const text = plainText(value);
+  if (!text) return null;
+  const directCode = text.toUpperCase().replace(/[\s-]+/g, "_");
+  if ((QUESTION_TYPE_CODES as readonly string[]).includes(directCode)) return directCode;
   if (module === "reading") {
-    if (/true\s*\/\s*false\s*\/\s*not given|\btrue\b[\s\S]*\bfalse\b[\s\S]*\bnot given\b/i.test(text)) return "R_TFNG";
-    if (/yes\s*\/\s*no\s*\/\s*not given|\byes\b[\s\S]*\bno\b[\s\S]*\bnot given\b/i.test(text)) return "R_YNNG";
-    if (value.includes("heading")) return "R_HEADING_MATCH";
-    if (value.includes("choose two") || value.includes("choose three")) return "R_MULTIPLE_CHOICE";
-    if (/[a-d][.)]/i.test(text)) return "R_SINGLE_CHOICE";
+    if (/true\s*\/?\s*false\s*\/?\s*not\s*given|判断|t\s*\/?\s*f\s*\/?\s*ng/i.test(text)) return "R_TFNG";
+    if (/yes\s*\/?\s*no\s*\/?\s*not\s*given|是非|y\s*\/?\s*n\s*\/?\s*ng/i.test(text)) return "R_YNNG";
+    if (/段落.?标题|heading/i.test(text)) return "R_HEADING_MATCH";
+    if (/信息匹配|段落.?信息|matching\s+information/i.test(text)) return "R_INFORMATION_MATCH";
+    if (/人物|特征|人名|feature/i.test(text)) return "R_FEATURE_MATCH";
+    if (/句尾|句子结尾|sentence\s+end/i.test(text)) return "R_SENTENCE_END_MATCH";
+    if (/摘要|summary/i.test(text)) return "R_SUMMARY_COMPLETION";
+    if (/句子填空|sentence\s+completion/i.test(text)) return "R_SENTENCE_COMPLETION";
+    if (/表格|笔记|流程图|note|table|flow\s*chart/i.test(text)) return "R_NOTE_TABLE_FLOW_COMPLETION";
+    if (/图示|图表标注|diagram/i.test(text)) return "R_DIAGRAM_LABEL";
+    if (/简答|short\s+answer/i.test(text)) return "R_SHORT_ANSWER";
+    if (/多选|multiple|choose\s+(two|three)|选择.{0,5}(两|三|2|3)/i.test(text)) return "R_MULTIPLE_CHOICE";
+    if (/单选|single|选择题/i.test(text)) return "R_SINGLE_CHOICE";
   } else {
-    if (/map|plan|diagram/i.test(text)) return "L_MAP_PLAN_DIAGRAM";
-    if (/choose two|choose three/i.test(text)) return "L_MULTIPLE_CHOICE";
-    if (/[a-d][.)]/i.test(text)) return "L_SINGLE_CHOICE";
+    if (/地图|平面图|图示|map|plan|diagram/i.test(text)) return "L_MAP_PLAN_DIAGRAM";
+    if (/流程图|flow\s*chart/i.test(text)) return "L_FLOW_CHART";
+    if (/表格|笔记|表单|form|note|table/i.test(text)) return "L_FORM_NOTE_TABLE";
+    if (/句子填空|sentence\s+completion/i.test(text)) return "L_SENTENCE_COMPLETION";
+    if (/简答|short\s+answer/i.test(text)) return "L_SHORT_ANSWER";
+    if (/多选|multiple|choose\s+(two|three)|选择.{0,5}(两|三|2|3)/i.test(text)) return "L_MULTIPLE_CHOICE";
+    if (/单选|single|选择题/i.test(text)) return "L_SINGLE_CHOICE";
+    if (/匹配|matching/i.test(text)) return "L_MATCHING";
   }
   return null;
 }
 
+export function inferQuestionType(text: string, module: IELTSModule): string | null {
+  return normalizeQuestionTypeHint(text, module);
+}
+
+export function officialQuestionType(raw: RawRow, module: IELTSModule): string | null {
+  for (const header of QUESTION_TYPE_HEADERS) {
+    const value = normalizeQuestionTypeHint(raw[header], module);
+    if (value) return value;
+  }
+  return null;
+}
 export async function sha256(value: string | ArrayBuffer): Promise<string> {
   const bytes = typeof value === "string" ? new TextEncoder().encode(value) : value;
   const hash = await crypto.subtle.digest("SHA-256", bytes);
@@ -145,6 +174,7 @@ export async function normalizeRawRow(
   if (date.warning) warnings.push(date.warning);
   const questionText = plainText(raw["题目"]);
   const evidence = plainText(raw["原文"]);
+  const officialType = officialQuestionType(raw, module);
   const sourceAnalysis = SOURCE_ANALYSIS_HEADERS.map((header) => plainText(raw[header]))
     .filter(Boolean).filter((value, index, values) => values.indexOf(value) === index).join("\n");
   const sourceLabel = plainText(raw["题号"]);
@@ -184,7 +214,8 @@ export async function normalizeRawRow(
     answer_state: user.state,
     correct_answer: correct,
     module,
-    question_type_hint: inferQuestionType(questionText, module),
+    question_type_hint: officialType ?? inferQuestionType(questionText, module),
+    official_question_type: officialType,
     row_fingerprint: rowFingerprint,
     question_fingerprint: questionFingerprint,
     warnings

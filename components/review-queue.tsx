@@ -1,11 +1,12 @@
 import { BookOpenCheck, Check, CircleAlert, LoaderCircle, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
-import { CAUSES, TAXONOMY_VERSION, questionTypeLabel } from "@/lib/taxonomy";
+import { TAXONOMY_VERSION, questionTypeLabel } from "@/lib/taxonomy";
 import { isMultipleChoiceType } from "@/lib/answer-comparison";
 import { MultipleAnswerStatus } from "./multiple-answer-status";
 import { getCauseCandidates, isMeaningfulEvidence } from "@/lib/cause-guidance";
 import type { AnalysisDraft, PendingAnalysis } from "@/lib/types";
 import { Badge, Empty, Intro } from "./ui";
+import { CauseOptions } from "./cause-options";
 
 export function ReviewQueue({ items, busy, updateDraft, remove, confirm }: {
   items: PendingAnalysis[];
@@ -59,14 +60,14 @@ export function ReviewQueue({ items, busy, updateDraft, remove, confirm }: {
         {(isMeaningfulEvidence(item.row.source_note) || item.row.source_tags.some(isMeaningfulEvidence)) && <div className="learner-evidence"><strong>你的笔记证据</strong><span>{[item.row.source_note, ...item.row.source_tags].filter(isMeaningfulEvidence).join(" · ")}</span></div>}
         {item.draft.status === "manual_required" && <div className="warning"><CircleAlert />AI 响应暂时失败，已保留题型与候选错因，请填写错因依据后确认：{item.draft.error}</div>}
         <div className="fields two">
-          <div className="ai-result"><span>AI 识别题型</span><strong>{questionTypeLabel(item.draft.question_type)}</strong><code>{item.draft.question_type}</code></div>
-          <label><span>主要错因</span><select value={item.draft.primary_cause} onChange={(e) => updateDraft(item.row.client_id, { primary_cause: e.target.value, secondary_causes: item.draft.secondary_causes.filter((code) => code !== e.target.value) })}>{Object.entries(CAUSES).map(([code, label]) => <option value={code} key={code}>{code} · {label}</option>)}</select></label>
+          <div className="ai-result"><span>{item.row.official_question_type ? "爱听写官方题型" : "AI 识别题型"}</span><strong>{questionTypeLabel(item.draft.question_type)}</strong><code>{item.draft.question_type}</code></div>
+          <label><span>主要错因</span><select value={item.draft.primary_cause} onChange={(e) => updateDraft(item.row.client_id, { primary_cause: e.target.value, secondary_causes: item.draft.secondary_causes.filter((code) => code !== e.target.value) })}><CauseOptions /></select></label>
           {[0, 1].map((slot) => <label key={slot}><span>次要错因 {slot + 1} <em>可选</em></span><select value={item.draft.secondary_causes[slot] ?? ""} onChange={(e) => {
             const next = [...item.draft.secondary_causes];
             if (e.target.value) next[slot] = e.target.value;
             else next.splice(slot, 1);
             updateDraft(item.row.client_id, { secondary_causes: [...new Set(next.filter((code) => code && code !== item.draft.primary_cause))].slice(0, 2) });
-          }}><option value="">不设置</option>{Object.entries(CAUSES).filter(([code]) => code !== item.draft.primary_cause).map(([code, label]) => <option value={code} key={code}>{code} · {label}</option>)}</select></label>)}
+          }}><option value="">不设置</option><CauseOptions exclude={[item.draft.primary_cause]} /></select></label>)}
           <div className="cause-suggestions wide"><div><strong>本题常见错因候选</strong><span>根据题型、爱听写证据与有效标签生成；候选不是结论，请结合自己的作答过程确认。</span></div><div>{getCauseCandidates(item.row, item.draft.question_type).map((candidate) => {
             const primary = item.draft.primary_cause === candidate.code;
             const secondary = item.draft.secondary_causes.includes(candidate.code);

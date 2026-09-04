@@ -69,6 +69,16 @@ export const CAUSES = {
   U_UNCONFIRMED: "现有证据不足，待确认"
 } as const;
 
+export const CAUSE_GROUPS = {
+  "知识缺口": ["K_VOCAB", "K_GRAMMAR", "K_BACKGROUND"],
+  "理解加工": ["C_PARAPHRASE", "C_DETAIL", "C_GIST", "C_INFERENCE", "C_STANCE", "C_COHESION", "C_LOGIC"],
+  "题型策略": ["S_INSTRUCTION", "S_LOCATE", "S_SCOPE", "S_TFNG_BOUNDARY", "S_OPTION_COMPARE", "S_DISTRACTOR", "S_PREDICTION"],
+  "听觉感知": ["P_PHONEME", "P_CONNECTED_SPEECH", "P_SEGMENTATION", "P_ACCENT_SPEED", "P_NUMBER_NAME", "P_SIGNAL"],
+  "作答执行": ["E_SPELLING", "E_MORPHOLOGY", "E_WORD_LIMIT", "E_TRANSFER", "E_FORMAT"],
+  "状态行为（需自述证据）": ["B_TIME", "B_ATTENTION", "B_MEMORY", "B_OVERTHINK", "B_CHANGED_ANSWER", "B_GUESS"],
+  "待确认": ["U_UNCONFIRMED"]
+} as const;
+
 export const QUESTION_TYPE_CODES = Object.values(QUESTION_TYPES).flatMap((group) =>
   Object.keys(group)
 );

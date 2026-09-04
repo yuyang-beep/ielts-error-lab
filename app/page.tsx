@@ -64,7 +64,7 @@ export default function Home() {
     catch (error) { setMessage({ tone: "error", text: error instanceof Error ? error.message : "错题本加载失败" }); }
   }, [localUserKey]);
   const loadInsights = useCallback(async () => {
-    try { setInsights(buildLocalInsights(await loadLocalMistakes(localUserKey))); }
+    try { const records = await loadLocalMistakes(localUserKey); setMistakes(records); setInsights(buildLocalInsights(records)); }
     catch (error) { setMessage({ tone: "error", text: error instanceof Error ? error.message : "洞察加载失败" }); }
   }, [localUserKey]);
 
@@ -177,7 +177,7 @@ export default function Home() {
         {section === "review" && <ReviewQueue items={pending} busy={busy} updateDraft={updateDraft} remove={(ids) => { const removed = new Set(ids); setPending((items) => items.filter((item) => !removed.has(item.row.client_id))); }} confirm={confirm} />}
         {section === "notebook" && <Notebook items={mistakes} reload={loadMistakes} userKey={localUserKey} causeFilter={notebookCause} onCauseFilterChange={setNotebookCause} restoreCloud={restoreCloudMistakes} restoringCloud={busy === "restore"} />}
         {section === "vocabulary" && <VocabularyBook items={mistakes} />}
-        {section === "insights" && <Insights data={insights} onSelectCause={(cause) => { setNotebookCause(cause); setSection("notebook"); }} />}
+        {section === "insights" && <Insights data={insights} items={mistakes} onSelectCause={(cause) => { setNotebookCause(cause); setSection("notebook"); }} />}
         {section === "settings" && <SettingsPanel config={config} />}
       </div>
       <DeepSeekConnectionDialog config={config} personalKey={personalKey} open={showConnection} checking={checkingConfig} onClose={() => setShowConnection(false)} onRefresh={() => void loadConfig()} onSavePersonalKey={(key) => { setPersonalKey(key); if (key) sessionStorage.setItem("ielts-error-lab:deepseek-key", key); else sessionStorage.removeItem("ielts-error-lab:deepseek-key"); setMessage({ tone: "ok", text: key ? "个人 Key 已保存到本次浏览器会话" : "个人 Key 已清除" }); }} />

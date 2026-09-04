@@ -55,6 +55,14 @@ describe("爱听写 XLSX 输入契约", () => {
     expect(report.warnings.join(" ")).toContain("公式");
   });
 
+  it("读取爱听写官方题型列并保留官方标记", async () => {
+    const officialHeaders = [...headers, "题型"];
+    const file = workbookFile([officialHeaders, ["08-02", "剑雅20 Test 1 Passage 1 Q1", "Choose a heading", "evidence", "", "", "A", "A", "段落标题匹配"]], "阅读.xlsx");
+    const report = await parseWorkbook(file);
+    expect(report.extra_columns).not.toContain("题型");
+    expect(report.rows[0]).toMatchObject({ question_type_hint: "R_HEADING_MATCH", official_question_type: "R_HEADING_MATCH" });
+  });
+
   it("缺少必需列时阻止分析", async () => {
     const report = await parseWorkbook(workbookFile([headers.slice(0, -1), ["08-02"]]));
     expect(report.blocking_errors.join(" ")).toContain("正确答案");

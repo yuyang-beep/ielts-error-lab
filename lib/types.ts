@@ -33,6 +33,7 @@ export interface NormalizedMistake {
   correct_answer: string;
   module: IELTSModule;
   question_type_hint: string | null;
+  official_question_type?: string | null;
   row_fingerprint: string;
   question_fingerprint: string;
   warnings: string[];

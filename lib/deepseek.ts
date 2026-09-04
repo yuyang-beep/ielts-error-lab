@@ -48,7 +48,10 @@ function manualDraft(row: NormalizedMistake, error: string): AnalysisDraft {
     question_type: questionType,
     primary_cause: "U_UNCONFIRMED",
     secondary_causes: [],
-    answer_comparison: `题干命题（含选项）：${row.question_text.slice(0, 1_200)}\n我的答案：${row.user_answer ?? "未作答"}\n正确答案：${row.correct_answer}\n答案差异：${row.user_answer == null ? "未填写，无法从作答本身判断错因" : "待结合证据与作答过程确认"}`,
+    answer_comparison: `题干命题（含选项）：${row.question_text.slice(0, 1_200)}
+我的答案：${row.user_answer ?? "未作答"}
+正确答案：${row.correct_answer}
+答案差异：${row.user_answer == null ? "未填写，无法从作答本身判断错因" : "待结合证据与作答过程确认"}`,
     evidence_span: isMeaningfulEvidence(row.source_analysis) ? row.source_analysis : row.evidence_context.slice(0, 1_200),
     trap_mechanism: trapMechanism,
     diagnostic_question: `回想作答过程，最接近哪一种：${candidateLabels || "没有定位、没有理解或执行失误"}？请选一项并补充当时卡住的具体步骤。`,
@@ -64,7 +67,7 @@ function buildInstructions(): string {
 
 必须遵守：
 1. 用中文输出且只输出符合 JSON Schema 的对象。题型和错因只能使用给定代码。
-2. 自动判定 question_type：以模块、题目要求和题面结构为准，question_type_hint 只作参考；证据足够时不得偷懒选择 OTHER。
+2. 自动判定 question_type：如果存在 official_question_type，必须优先采用爱听写官方题型；否则以模块、题目要求和题面结构为准，question_type_hint 只作参考；证据足够时不得偷懒选择 OTHER。
 3. 比较题干、爱听写原文/解析、用户答案和正确答案，准确说明答案陷阱。
    answer_comparison 必须明确分成四行：题干命题、我的答案、正确答案、答案差异。题干命题只引用题干/选项，不得把填写答案或正确答案混入题干；答案差异只比较两者，不把答案当作证据原文。
 4. 诊断一个主要错因和最多两个次要错因。题型常见错因只是候选，不是证据。
@@ -96,6 +99,7 @@ ${JSON.stringify({
     module: row.module,
     source_label: row.source_label,
     question_type_hint: row.question_type_hint,
+    official_question_type: row.official_question_type,
     question_text: row.question_text,
     idictation_evidence: row.evidence_context,
     idictation_analysis: sourceAnalysis || null,
@@ -160,21 +164,22 @@ async function requestOne(
     if (!text) throw new Error("DeepSeek 返回空内容");
     const parsed = analysisDraftSchema.parse(JSON.parse(text));
     if (parsed.client_id !== row.client_id) throw new Error("DeepSeek 返回了不匹配的记录 ID");
-    const behaviorCauses = [parsed.primary_cause, ...parsed.secondary_causes]
+    const normalizedParsed = row.official_question_type ? { ...parsed, question_type: row.official_question_type } : parsed;
+    const behaviorCauses = [normalizedParsed.primary_cause, ...normalizedParsed.secondary_causes]
       .filter((cause) => cause.startsWith("B_"));
     const hasUserEvidence = hasMeaningfulUserEvidence(row);
     if (behaviorCauses.length && !hasUserEvidence) {
       throw new Error("行为类错因缺少用户笔记证据");
     }
-    if (row.answer_state === "unanswered" && !hasUserEvidence && parsed.primary_cause !== "U_UNCONFIRMED") {
+    if (row.answer_state === "unanswered" && !hasUserEvidence && normalizedParsed.primary_cause !== "U_UNCONFIRMED") {
       throw new Error("未作答记录被无证据归因");
     }
-    if (!hasUserEvidence && parsed.provenance.includes("user_note")) {
+    if (!hasUserEvidence && normalizedParsed.provenance.includes("user_note")) {
       throw new Error("AI 错把数字编号当作用户笔记证据");
     }
     return row.answer_state === "unanswered" && !hasUserEvidence
-      ? { ...parsed, secondary_causes: [], confidence: Math.min(parsed.confidence, 0.45) }
-      : parsed;
+      ? { ...normalizedParsed, secondary_causes: [], confidence: Math.min(normalizedParsed.confidence, 0.45) }
+      : normalizedParsed;
   } finally {
     clearTimeout(timer);
   }

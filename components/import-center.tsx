@@ -60,14 +60,14 @@ export function ImportCenter(props: Props) {
 
     {report?.rows.length ? <div className="card pad preview">
       <div className="card-head"><div><span>STEP 03</span><h3>选择需要分析的记录</h3></div><div className="select-actions"><span>已选 {selected.size} / {report.rows.length}</span><button onClick={() => props.setSelected(new Set(report.rows.map((row) => row.client_id)))}>全选</button><button onClick={() => props.setSelected(new Set())}>清空</button></div></div>
-      <div className="table-wrap"><table><thead><tr><th aria-label="选择记录"></th><th>来源</th><th>题目</th><th>我的答案</th><th>正确答案</th><th>题型提示</th></tr></thead>
+      <div className="table-wrap"><table><thead><tr><th aria-label="选择记录"></th><th>来源</th><th>题目</th><th>我的答案</th><th>正确答案</th><th>爱听写官方题型</th></tr></thead>
         <tbody>{report.rows.map((row) => <tr key={row.client_id}>
           <td><input aria-label={`选择第 ${row.row_number} 行`} type="checkbox" checked={selected.has(row.client_id)} onChange={() => props.setSelected((current) => { const next = new Set(current); if (next.has(row.client_id)) next.delete(row.client_id); else next.add(row.client_id); return next; })} /></td>
           <td><strong>{row.source_label || "未标注"}</strong><small>{row.attempted_on ?? row.attempted_on_raw}</small></td>
           <td className="question">{row.question_text}</td>
           <td>{row.user_answer ?? <Badge tone="orange">未作答</Badge>}</td>
           <td><strong>{row.correct_answer}</strong></td>
-          <td>{row.question_type_hint ? <Badge>{questionTypeLabel(row.question_type_hint)}</Badge> : <span className="muted">待 AI 判断</span>}</td>
+          <td>{row.question_type_hint ? <Badge tone={row.official_question_type ? "green" : undefined}>{questionTypeLabel(row.question_type_hint)}{row.official_question_type ? " · 官方" : " · 题干推断"}</Badge> : <span className="muted">待判断</span>}</td>
         </tr>)}</tbody>
       </table></div>
       <div className="card-foot"><div><ShieldCheck />原文件留在浏览器，仅发送选中的标准化文本。</div><button className="primary" disabled={Boolean(report.blocking_errors.length) || !selected.size || busy === "analyze"} onClick={() => void props.analyze()}>{busy === "analyze" ? <LoaderCircle className="spin" /> : <Sparkles />}生成分析草稿<ChevronRight /></button></div>

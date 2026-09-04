@@ -40,6 +40,12 @@ describe("DeepSeek 结构化分析", () => {
     expect(request.input).not.toContain("micro_drill");
   });
 
+  it("爱听写官方题型优先于 AI 返回题型", async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ output_text: JSON.stringify(valid) }), { status: 200 }));
+    const result = await analyzeRows([{ ...row, official_question_type: "R_HEADING_MATCH" }], { apiKey: "test-secret" }, fetcher);
+    expect(result[0].question_type).toBe("R_HEADING_MATCH");
+  });
+
   it("非法输出重试一次后安全转手工分析", async () => {
     const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ output_text: "{broken" }), { status: 200 }));
     const result = await analyzeRows([row], { apiKey: "test-secret" }, fetcher);

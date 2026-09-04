@@ -1,5 +1,5 @@
 import type { IELTSModule, ImportReport } from "./types";
-import { normalizeRawRow, plainText, REQUIRED_HEADERS, sha256, SOURCE_ANALYSIS_HEADERS } from "./normalization";
+import { normalizeRawRow, plainText, QUESTION_TYPE_HEADERS, REQUIRED_HEADERS, sha256, SOURCE_ANALYSIS_HEADERS } from "./normalization";
 
 export const MAX_FILE_BYTES = 10 * 1024 * 1024;
 export const MAX_DATA_ROWS = 2000;
@@ -71,7 +71,7 @@ export async function parseWorkbook(
   const headers = (matrix[0] ?? []).map(plainText);
   const missing = REQUIRED_HEADERS.filter((header) => !headers.includes(header));
   if (missing.length) blockingErrors.push(`缺少必需列：${missing.join("、")}`);
-  const knownHeaders = new Set<string>([...REQUIRED_HEADERS, ...SOURCE_ANALYSIS_HEADERS]);
+  const knownHeaders = new Set<string>([...REQUIRED_HEADERS, ...SOURCE_ANALYSIS_HEADERS, ...QUESTION_TYPE_HEADERS]);
   const extraColumns = headers.filter((header) => header && !knownHeaders.has(header));
   if (extraColumns.length) warnings.push(`发现额外列，将忽略：${extraColumns.join("、")}`);
   if (matrix.length - 1 > MAX_DATA_ROWS) blockingErrors.push("数据超过 2,000 条上限");

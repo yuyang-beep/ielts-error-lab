@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inferQuestionType, normalizeAnswer, normalizeCorrectAnswer, parseAttemptDate, parseSourceLabel, plainText, splitTags } from "@/lib/normalization";
+import { inferQuestionType, normalizeAnswer, normalizeCorrectAnswer, officialQuestionType, parseAttemptDate, parseSourceLabel, plainText, splitTags } from "@/lib/normalization";
 import { getCauseCandidates, isMeaningfulEvidence } from "@/lib/cause-guidance";
 
 describe("数据归一化", () => {
@@ -29,6 +29,12 @@ describe("数据归一化", () => {
     expect(inferQuestionType("Choose TRUE / FALSE / NOT GIVEN", "reading")).toBe("R_TFNG");
     expect(plainText("<b>题目</b><script>alert(1)</script>")).toBe("题目 alert(1)");
     expect(splitTags("定位、同义替换，逻辑")).toEqual(["定位", "同义替换", "逻辑"]);
+  });
+
+  it("优先读取爱听写官方题型并按模块映射", () => {
+    expect(officialQuestionType({ "题型": "段落标题匹配" }, "reading")).toBe("R_HEADING_MATCH");
+    expect(officialQuestionType({ "题型": "地图题" }, "listening")).toBe("L_MAP_PLAN_DIAGRAM");
+    expect(officialQuestionType({ "题型": "L_MULTIPLE_CHOICE" }, "listening")).toBe("L_MULTIPLE_CHOICE");
   });
 
   it("按题型给出常见错因候选，但忽略数字编号", () => {

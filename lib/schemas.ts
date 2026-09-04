@@ -19,6 +19,7 @@ export const normalizedMistakeSchema = z.object({
   correct_answer: z.string().min(1).max(2_000),
   module: z.enum(["reading", "listening"]),
   question_type_hint: z.string().nullable(),
+  official_question_type: z.string().nullable().optional(),
   row_fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
   question_fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
   warnings: z.array(z.string().max(500)).max(50)
